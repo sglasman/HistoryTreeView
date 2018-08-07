@@ -1,10 +1,6 @@
 package com.saulglasman.canvastest
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.util.Log
 
 /*class BmpTree(var nodeBmp: Bitmap? = null, var kids: MutableList<BmpTree> = mutableListOf()) : Serializable {
     fun addKid(kid: BmpTree) {
@@ -46,9 +42,9 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, nu
     fun nodesAtDepth(i: Int): Int = nodes.filter { it.coords.first == i }.size
     fun nodeAtCoords(coords: Pair<Int, Int>): TreeNode? = nodes.find { it.coords == coords }
 
-    fun getLineageExceptRoot(node: TreeNode): List<TreeNode> {
-        if (node.parent == null) return listOf()
-        return getLineageExceptRoot(node.parent).plus(node)
+    fun getLineage(node: TreeNode): List<TreeNode> {
+        if (node.parent == null) return listOf(node)
+        return getLineage(node.parent).plus(node)
     }
 
     fun addNewNodeAt(currentNode: TreeNode): TreeNode {
@@ -60,12 +56,13 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, nu
                 .forEach { it.coords = Pair(it.coords.first, it.coords.second + 1) } //shuffle along the remaining nodes in the column
         val newNode = TreeNode(parent = currentNode, coords = Pair(i + 1, newNodeYCoord))
         nodes.add(newNode)
+        currentNode.isLeaf = false
         return newNode
     }
 
     private fun getChildren(node: TreeNode): List<TreeNode> = nodes.filter { it.parent == node }
 
-    data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>)
+    data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>, var isLeaf: Boolean = true)
 }
 
 

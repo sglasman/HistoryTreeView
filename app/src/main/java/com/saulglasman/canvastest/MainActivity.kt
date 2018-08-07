@@ -2,13 +2,11 @@ package com.saulglasman.canvastest
 
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.os.Bundle
 import android.view.View.GONE
 import android.view.View.VISIBLE
-import android.view.ViewManager
 import android.widget.Button
+import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -17,15 +15,7 @@ import androidx.lifecycle.ViewModelProviders
 import com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
 import com.google.android.material.snackbar.Snackbar.make
 import org.jetbrains.anko.*
-import org.jetbrains.anko.custom.ankoView
 import org.jetbrains.anko.sdk25.coroutines.onClick
-
-const val ID_BUTTONBAR = 101
-const val ID_MAINVIEW = 102
-const val ID_TREEVIEW = 103
-
-var PERMISSIONS_STORAGE: Array<String> = arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE,
-        android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
 @Suppress("EXPERIMENTAL_FEATURE_WARNING", "NestedLambdaShadowedImplicitParameter")
 class MainActivity : AppCompatActivity() {
@@ -36,6 +26,9 @@ class MainActivity : AppCompatActivity() {
     lateinit var commitButton: Button
     lateinit var branchButton: Button
     lateinit var showHideTreeButton: Button
+    lateinit var undoButton: Button
+    lateinit var redoButton: Button
+    lateinit var undoRedoButtonBar: LinearLayout
     lateinit var treeView: TreeView
 
     @SuppressLint("SetTextI18n")
@@ -51,7 +44,7 @@ class MainActivity : AppCompatActivity() {
             }.lparams {
                 alignParentTop()
                 width = matchParent
-                above(ID_BUTTONBAR)
+                above(ID_TREEVIEW)
             }
             linearLayout {
                 id = ID_BUTTONBAR
@@ -62,6 +55,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 commitButton = button("Commit") {
                     onClick {
+                        viewModel.currentNode.bmp = overlayBmpList(viewModel.undoRedoStack.take(viewModel.stackPointer)) //necessary in case there have been some undos
                         if (viewModel.currentNode.bmp == null) {
                             make(zoomView, "Nothing to commit", LENGTH_SHORT).show()
                         } else {
@@ -69,8 +63,7 @@ class MainActivity : AppCompatActivity() {
                             viewModel.isCanvasFresh.value = true
                             viewModel.isCommitted.value = true
                             viewModel.isEditing.value = false
-                            viewModel.frontBitmap = Bitmap.createBitmap(zoomView.width, zoomView.height, Bitmap.Config.ARGB_8888)
-                            zoomView.pathCanvas = Canvas(viewModel.frontBitmap)
+                            zoomView.reinitFrontBitmap()
                         }
                     }
                 }
@@ -117,11 +110,35 @@ class MainActivity : AppCompatActivity() {
                 height = wrapContent
                 alignParentBottom()
             }
+            undoRedoButtonBar = linearLayout {
+                id = ID_UNDOREDOBAR
+                visibility = GONE
+                undoButton = button("Undo") {
+                    onClick {
+                        if (viewModel.stackPointer > 0) {
+                            viewModel.stackPointer--
+                            zoomView.invalidate()
+                        }
+                    }
+                }
+                redoButton = button("Redo") {
+                    onClick {
+                        if (viewModel.stackPointer < viewModel.undoRedoStack.size) {
+                            viewModel.stackPointer++
+                            zoomView.invalidate()
+                        }
+                    }
+                }
+            }.lparams {
+                width = matchParent
+                height = wrapContent
+                above(ID_BUTTONBAR)
+            }
             treeView = treeView(viewModel) {
                 id = ID_TREEVIEW
                 visibility = GONE
             }.lparams {
-                above(ID_BUTTONBAR)
+                above(ID_UNDOREDOBAR)
                 width = matchParent
                 height = dip(100)
             }
@@ -130,9 +147,11 @@ class MainActivity : AppCompatActivity() {
             if (it) {
                 editButton.text = "Stop editing"
                 zoomView.mode = CanvasMode.MODE_DRAW
+                undoRedoButtonBar.visibility = VISIBLE
             } else {
                 editButton.text = "Edit"
                 zoomView.mode = CanvasMode.MODE_NAV
+                undoRedoButtonBar.visibility = GONE
             }
         })
         viewModel.isTreeShown.observe(this, Observer {
@@ -165,5 +184,3 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
-fun ViewManager.historyTreeView(viewModel: HistoryTreeViewModel, init: HistoryTreeView.() -> Unit = {}) = ankoView({ HistoryTreeView(it, viewModel) }, 0, init)
-fun ViewManager.treeView(viewModel: HistoryTreeViewModel, init: TreeView.() -> Unit = {}) = ankoView({ TreeView(it, viewModel) }, 0, init)

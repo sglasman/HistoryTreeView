@@ -7,24 +7,20 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
 class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
-                           var frontBitmap: Bitmap? = null, //This will eventually be replaced with an undo/redo stack
+                           var undoRedoStack: MutableList<Bitmap> = mutableListOf(),
                            var transformer: CanvasTransformer = CanvasTransformer(),
                            val tree: BmpTree = BmpTree(),
                            var currentNode: BmpTree.TreeNode = tree.nodeAtCoords(Pair(0, 0))!!,
+                           var stackPointer: Int = 0,
 
                            var isCanvasFresh: MutableLiveData<Boolean> = MutableLiveData(),
                            var isTreeShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isEditing: MutableLiveData<Boolean> = MutableLiveData(),
                            var isCommitted: MutableLiveData<Boolean> = MutableLiveData()) : ViewModel() {
     fun arrangeBmps() {
-        val nodeList = tree.getLineageExceptRoot(currentNode)
-        backBitmap = nodeList.fold(
-                Bitmap.createBitmap(tree.nodeAtCoords(Pair(0, 0))!!.bmp!!)
-        ) { acc: Bitmap, node: BmpTree.TreeNode ->
-            val canvas = Canvas(acc)
-            canvas.drawBitmap(node.bmp!!, 0f, 0f, Paint())
-            acc
-        }
+        val nodeList = tree.getLineage(currentNode)
+        backBitmap = overlayBmpList(nodeList.map {node -> node.bmp ?:
+        Bitmap.createBitmap(TOKEN_WIDTH_HEIGHT, TOKEN_WIDTH_HEIGHT, Bitmap.Config.ARGB_8888)})
     }
 
     init {

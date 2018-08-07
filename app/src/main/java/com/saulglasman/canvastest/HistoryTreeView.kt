@@ -16,19 +16,12 @@ import android.widget.ImageView
 import java.io.File
 import java.lang.Math.*
 
-const val touchTolerance: Float = 4f
-
-enum class CanvasMode {
-    MODE_NAV, MODE_DRAW
-}
-
 @SuppressLint("ViewConstructor")
 class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : ImageView(context) {
     val paint = Paint()
     val path = Path()
     private val scaleGestureDetector: ScaleGestureDetector = ScaleGestureDetector(context, ZoomListener())
     private val gestureDetector: GestureDetector = GestureDetector(context, ScrollListener())
-
     lateinit var pathCanvas: Canvas
     var currX: Float = 0f
     var currY: Float = 0f
@@ -53,18 +46,17 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        if (viewModel.frontBitmap == null) viewModel.frontBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         if (viewModel.backBitmap == null) {
             viewModel.backBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
             val renderer = PdfRenderer(ParcelFileDescriptor.open(
                     File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
                             "sample.pdf"), MODE_READ_ONLY))
-            renderer.openPage(0).render(viewModel.backBitmap, null, null, RENDER_MODE_FOR_DISPLAY)
+            renderer.openPage(0).render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
             viewModel.currentNode.bmp = viewModel.backBitmap!!
         }
 
-        pathCanvas = Canvas(viewModel.frontBitmap)
-        pathCanvas.drawColor(Color.TRANSPARENT)
+  /*      pathCanvas = Canvas(viewModel.frontBitmap)
+        pathCanvas.drawColor(Color.TRANSPARENT)*/
     }
 
     override fun onDraw(canvas: Canvas?) {
@@ -73,8 +65,8 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
         canvas!!.scale(viewModel.transformer.scaleFactor, viewModel.transformer.scaleFactor)
         canvas.translate(viewModel.transformer.translateX, viewModel.transformer.translateY)
 
-        canvas.drawBitmap(viewModel.backBitmap, 0f, 0f, null)
-        canvas.drawBitmap(viewModel.frontBitmap, 0f, 0f, null)
+        canvas.drawBitmap(viewModel.backBitmap!!, 0f, 0f, null)
+        canvas.drawBitmap(overlayBmpList(viewModel.undoRedoStack.take(viewModel.stackPointer)), 0f, 0f, null)
 
     }
 
@@ -107,7 +99,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
                 viewModel.currentNode = viewModel.tree.addNewNodeAt(viewModel.currentNode)
                 viewModel.isCanvasFresh.value = false
             }
-            viewModel.currentNode.bmp = viewModel.frontBitmap!!
+            viewModel.currentNode.bmp = overlayBmpList(viewModel.undoRedoStack)
             path.reset()
         }
     }
@@ -135,15 +127,20 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
 
     private fun touchStart(x: Float, y: Float) {
         val (transformedX, transformedY) = viewModel.transformer.transform(Coord(x, y))
-        if (mode == CanvasMode.MODE_DRAW) path.moveTo(transformedX, transformedY)
-        currX = transformedX
-        currY = transformedY
-
+        if (mode == CanvasMode.MODE_DRAW) {
+            viewModel.undoRedoStack = viewModel.undoRedoStack.take(viewModel.stackPointer).toMutableList()
+            viewModel.undoRedoStack.add(Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888))
+            pathCanvas = Canvas(viewModel.undoRedoStack[viewModel.stackPointer])
+            viewModel.stackPointer++
+            path.moveTo(transformedX, transformedY)
+            currX = transformedX
+            currY = transformedY
+        }
     }
 
     fun reinitFrontBitmap() {
-        viewModel.frontBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        pathCanvas = Canvas(viewModel.frontBitmap)
+        viewModel.undoRedoStack = mutableListOf()
+        viewModel.stackPointer = 0
     }
 
     inner class ZoomListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
