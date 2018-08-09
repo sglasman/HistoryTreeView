@@ -1,5 +1,5 @@
 # HistoryTreeView
-This is an activity supporting a custom View which can be drawn on and whose state can be tracked and modified using a version history tree.
+This is an activity supporting a custom View which can be zoomed, scrolled and drawn on and whose state can be tracked and modified using a version history tree.
 
 <img src = "https://github.com/sglasman/HistoryTreeView/blob/master/screenshot0.png"/>
 
