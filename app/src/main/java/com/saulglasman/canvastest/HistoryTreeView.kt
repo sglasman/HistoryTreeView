@@ -32,7 +32,8 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
         with(paint) {
             color = Color.BLACK
             style = Paint.Style.STROKE
-            strokeWidth = 12f
+            strokeWidth = STROKE_WIDTH
+            strokeCap = Paint.Cap.ROUND
         }
 /*        PDFBoxResourceLoader.init(context);
         val pdfFile = PDDocument.load(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
@@ -132,9 +133,14 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
             viewModel.undoRedoStack.add(Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888))
             pathCanvas = Canvas(viewModel.undoRedoStack[viewModel.stackPointer])
             viewModel.stackPointer++
+
+            pathCanvas.drawPoint(transformedX, transformedY, paint)
+
             path.moveTo(transformedX, transformedY)
             currX = transformedX
             currY = transformedY
+
+            invalidate()
         }
     }
 
