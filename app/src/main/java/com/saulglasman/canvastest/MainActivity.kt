@@ -18,9 +18,9 @@ import org.jetbrains.anko.*
 import org.jetbrains.anko.sdk25.coroutines.onClick
 
 @Suppress("EXPERIMENTAL_FEATURE_WARNING", "NestedLambdaShadowedImplicitParameter")
-class MainActivity : AppCompatActivity() {
-
+class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
     lateinit var viewModel: HistoryTreeViewModel
+
     lateinit var zoomView: HistoryTreeView
     lateinit var editButton: Button
     lateinit var commitButton: Button
@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var redoButton: Button
     lateinit var undoRedoButtonBar: LinearLayout
     lateinit var treeView: TreeView
+
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -134,7 +135,7 @@ class MainActivity : AppCompatActivity() {
                 height = wrapContent
                 above(ID_BUTTONBAR)
             }
-            treeView = treeView(viewModel) {
+            treeView = treeView(viewModel, this@MainActivity) {
                 id = ID_TREEVIEW
                 visibility = GONE
             }.lparams {
@@ -143,6 +144,9 @@ class MainActivity : AppCompatActivity() {
                 height = dip(100)
             }
         }
+
+        //Listeners
+
         viewModel.isEditing.observe(this, Observer {
             if (it) {
                 editButton.text = "Stop editing"
@@ -181,6 +185,30 @@ class MainActivity : AppCompatActivity() {
             }
             treeView.invalidate()
         })
+    }
+
+    override fun deleteNode(node: BmpTree.TreeNode) {
+        if (node == viewModel.tree.rootNode) {
+            return
+        }
+        alert("Delete this node and all its descendants? This cannot be undone.") {
+            positiveButton("Proceed") {
+                if (viewModel.tree.getLineage(viewModel.currentNode).contains(node)) { // would the current node be deleted?
+                    viewModel.currentNode = node.parent!! // if so, move it back to the parent of the node to be deleted
+                    viewModel.reset()
+                }
+                viewModel.tree.getDescendantsIncludingSelf(node).forEach {
+                    viewModel.tree.nodes.remove(it)
+                    treeView.invalidate()
+                }
+            }
+            negativeButton("Back") {}
+        }.show()
+    }
+
+    override fun changeToNode(node: BmpTree.TreeNode) {
+        viewModel.currentNode = node
+        viewModel.reset()
     }
 }
 

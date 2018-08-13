@@ -20,4 +20,4 @@ fun overlayBmpList(bmpList: List<Bitmap>): Bitmap =
         }
 
 fun ViewManager.historyTreeView(viewModel: HistoryTreeViewModel, init: HistoryTreeView.() -> Unit = {}) = ankoView({ HistoryTreeView(it, viewModel) }, 0, init)
-fun ViewManager.treeView(viewModel: HistoryTreeViewModel, init: TreeView.() -> Unit = {}) = ankoView({ TreeView(it, viewModel) }, 0, init)
+fun ViewManager.treeView(viewModel: HistoryTreeViewModel, listener: TreeView.TreeViewListener, init: TreeView.() -> Unit = {}) = ankoView({ TreeView(it, viewModel, listener) }, 0, init)

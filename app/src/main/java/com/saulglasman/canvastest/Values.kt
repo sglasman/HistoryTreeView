@@ -7,6 +7,7 @@ const val ID_MAINVIEW = 102
 const val ID_TREEVIEW = 103
 const val ID_UNDOREDOBAR = 104
 const val STROKE_WIDTH = 12f
+const val TREEVIEW_CLICK_TOLERANCE = 12f
 
 var PERMISSIONS_STORAGE: Array<String> = arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE,
         android.Manifest.permission.WRITE_EXTERNAL_STORAGE)

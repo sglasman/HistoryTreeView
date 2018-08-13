@@ -12,15 +12,23 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
                            val tree: BmpTree = BmpTree(),
                            var currentNode: BmpTree.TreeNode = tree.nodeAtCoords(Pair(0, 0))!!,
                            var stackPointer: Int = 0,
-
                            var isCanvasFresh: MutableLiveData<Boolean> = MutableLiveData(),
                            var isTreeShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isEditing: MutableLiveData<Boolean> = MutableLiveData(),
                            var isCommitted: MutableLiveData<Boolean> = MutableLiveData()) : ViewModel() {
+
+    fun reset() {
+        arrangeBmps()
+        isCanvasFresh.value = true
+        isEditing.value = false
+    }
+
     fun arrangeBmps() {
         val nodeList = tree.getLineage(currentNode)
-        backBitmap = overlayBmpList(nodeList.map {node -> node.bmp ?:
-        Bitmap.createBitmap(TOKEN_WIDTH_HEIGHT, TOKEN_WIDTH_HEIGHT, Bitmap.Config.ARGB_8888)})
+        backBitmap = overlayBmpList(nodeList.map { node ->
+            node.bmp
+                    ?: Bitmap.createBitmap(TOKEN_WIDTH_HEIGHT, TOKEN_WIDTH_HEIGHT, Bitmap.Config.ARGB_8888)
+        })
     }
 
     init {

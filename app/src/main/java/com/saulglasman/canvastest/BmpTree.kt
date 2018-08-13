@@ -35,7 +35,7 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, nu
      * its position in the plane and maybe a bitmap.
      *
      * Storing the tree in this non-recursive way is unusual, but convenient when it comes to writing the draw function. */
-
+    val rootNode = nodes[0]
     val depth: Int
         get() = nodes.map { it.coords.first }.max()!! + 1
 
@@ -62,7 +62,10 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, nu
 
     private fun getChildren(node: TreeNode): List<TreeNode> = nodes.filter { it.parent == node }
 
-    data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>, var isLeaf: Boolean = true)
+    fun getDescendantsIncludingSelf(node: TreeNode): List<TreeNode> = if (getChildren(node).isEmpty()) listOf(node)
+    else getChildren(node).flatMap { getDescendantsIncludingSelf(it) }.plus(node)
+
+    data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>, var isLeaf: Boolean = true /*isLeaf isn't yet used, but will be...*/)
 }
 
 
