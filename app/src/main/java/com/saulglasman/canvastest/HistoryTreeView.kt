@@ -41,7 +41,6 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
         val renderer = PDFRenderer(pdfFile)
         val page = pdfFile.getPage(0)
         pdfBitmap = renderer.renderImageWithDPI(0, DisplayMetrics.DENSITY_DEFAULT.toFloat(), Bitmap.Config.ARGB_8888)*/
-
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -68,7 +67,6 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
 
         canvas.drawBitmap(viewModel.backBitmap!!, 0f, 0f, null)
         canvas.drawBitmap(overlayBmpList(viewModel.undoRedoStack.take(viewModel.stackPointer)), 0f, 0f, null)
-
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
@@ -194,4 +192,3 @@ class CanvasTransformer(var scaleFactor: Float = 1f, var translateX: Float = 0f,
 
     private fun affine(a: Float, b: Float, x: Float): Float = ((x / a) - b)
 }
-

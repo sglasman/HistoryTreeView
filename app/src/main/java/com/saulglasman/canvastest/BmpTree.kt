@@ -67,5 +67,3 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, nu
 
     data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>, var isLeaf: Boolean = true /*isLeaf isn't yet used, but will be...*/)
 }
-
-

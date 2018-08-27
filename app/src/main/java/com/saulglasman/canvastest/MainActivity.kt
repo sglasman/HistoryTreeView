@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
     lateinit var commitButton: Button
     lateinit var branchButton: Button
     lateinit var showHideTreeButton: Button
+    lateinit var colorChangeButton: Button
     lateinit var undoButton: Button
     lateinit var redoButton: Button
     lateinit var undoRedoButtonBar: LinearLayout
@@ -47,14 +48,16 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                 width = matchParent
                 above(ID_TREEVIEW)
             }
-            linearLayout {
+            relativeLayout {
                 id = ID_BUTTONBAR
                 editButton = button {
+                    id = ID_EDITBUTTON
                     onClick {
                         viewModel.isEditing.value = !(viewModel.isEditing.value!!)
                     }
-                }
+                }.lparams { alignParentLeft() }
                 commitButton = button("Commit") {
+                    id = ID_COMMITBUTTON
                     onClick {
                         viewModel.currentNode.bmp = overlayBmpList(viewModel.undoRedoStack.take(viewModel.stackPointer)) //necessary in case there have been some undos
                         if (viewModel.currentNode.bmp == null) {
@@ -67,7 +70,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                             zoomView.reinitFrontBitmap()
                         }
                     }
-                }
+                }.lparams { rightOf(ID_EDITBUTTON) }
 /*                branchButton = button("New branch") {
                     onClick {
                         var colorToSet: Int = zoomView.paint.color
@@ -104,7 +107,11 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                     }
                 }*/
                 showHideTreeButton = button {
+                    id = ID_TREEBUTTON
                     onClick { viewModel.isTreeShown.value = !viewModel.isTreeShown.value!! }
+                }.lparams { rightOf(ID_COMMITBUTTON) }
+                colorChangeButton = button {
+                    id = ID_COLORCHANGEBUTTON
                 }
             }.lparams {
                 width = matchParent
