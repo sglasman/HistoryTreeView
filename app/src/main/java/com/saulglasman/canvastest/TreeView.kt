@@ -94,7 +94,6 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
         }
         val linePaint = Paint()
         with(linePaint) {
-            color = Color.RED
             style = Paint.Style.STROKE
             strokeWidth = 6f
         }
@@ -103,6 +102,7 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
             val (xEnd, yEnd) = nodeToCoordMap[it]!!
             canvas.drawCircle(xEnd, yEnd, 12f, circlePaint)
             if (it.parent != null) {
+                linePaint.color = it.color ?: viewModel.drawColor.value ?: Color.BLACK
                 val (xStart, yStart) = nodeToCoordMap[it.parent]!!
                 canvas.drawLine(xStart + 10f, yStart, xEnd - 10f, yEnd, linePaint)
             }

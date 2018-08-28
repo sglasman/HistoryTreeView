@@ -66,7 +66,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
         canvas.translate(viewModel.transformer.translateX, viewModel.transformer.translateY)
 
         canvas.drawBitmap(viewModel.backBitmap!!, 0f, 0f, null)
-        canvas.drawBitmap(overlayBmpList(viewModel.undoRedoStack.take(viewModel.stackPointer)), 0f, 0f, null)
+        canvas.drawBitmap(overlayBmpList(viewModel.undoRedoStack.take(viewModel.stackPointer)), 0f, 0f, paint)
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
@@ -160,10 +160,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
             Log.d("TAGIT", "Zoomed by ${detector.scaleFactor}")
             invalidate()
             return super.onScale(detector)
-
-
         }
-
         private fun smoothing(x: Float) = if (x > 1) (5f / 4) else (4f / 5)
     }
 
@@ -177,8 +174,6 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
     }
 
     data class Coord(val x: Float, val y: Float)
-
-
 }
 
 class CanvasTransformer(var scaleFactor: Float = 1f, var translateX: Float = 0f, var translateY: Float = 0f) {

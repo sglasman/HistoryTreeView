@@ -2,6 +2,7 @@ package com.saulglasman.canvastest
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -15,7 +16,8 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
                            var isCanvasFresh: MutableLiveData<Boolean> = MutableLiveData(),
                            var isTreeShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isEditing: MutableLiveData<Boolean> = MutableLiveData(),
-                           var isCommitted: MutableLiveData<Boolean> = MutableLiveData()) : ViewModel() {
+                           var isCommitted: MutableLiveData<Boolean> = MutableLiveData(),
+                           var drawColor: MutableLiveData<Int> = MutableLiveData()) : ViewModel() {
 
     fun reset() {
         arrangeBmps()
@@ -36,5 +38,6 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
         isTreeShown.value = false
         isCommitted.value = false
         isCanvasFresh.value = true
+        drawColor.value = Color.BLACK
     }
 }

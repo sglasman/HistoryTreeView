@@ -1,11 +1,16 @@
 package com.saulglasman.canvastest
 
 import android.annotation.SuppressLint
+import android.content.DialogInterface
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.os.Bundle
 import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -26,12 +31,12 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
     lateinit var commitButton: Button
     lateinit var branchButton: Button
     lateinit var showHideTreeButton: Button
-    lateinit var colorChangeButton: Button
+    lateinit var colorChangeButton: ImageView
     lateinit var undoButton: Button
     lateinit var redoButton: Button
     lateinit var undoRedoButtonBar: LinearLayout
     lateinit var treeView: TreeView
-
+    lateinit var colorSelectDialog: DialogInterface
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,6 +68,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                         if (viewModel.currentNode.bmp == null) {
                             make(zoomView, "Nothing to commit", LENGTH_SHORT).show()
                         } else {
+                            viewModel.currentNode.isActive = false
                             viewModel.arrangeBmps()
                             viewModel.isCanvasFresh.value = true
                             viewModel.isCommitted.value = true
@@ -110,8 +116,48 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                     id = ID_TREEBUTTON
                     onClick { viewModel.isTreeShown.value = !viewModel.isTreeShown.value!! }
                 }.lparams { rightOf(ID_COMMITBUTTON) }
-                colorChangeButton = button {
+                colorChangeButton = imageView {
                     id = ID_COLORCHANGEBUTTON
+                    image = getDrawable(R.drawable.square)
+                    padding = dip(4)
+                    onClick {
+                        colorSelectDialog = alert {
+                            customView {
+                                verticalLayout {
+                                    textView("Select color:") {
+                                        id = ID_ALERTSELECTCOLORTEXT
+                                    }.lparams {
+                                        width = matchParent
+                                        height = wrapContent
+                                        padding = dip(16)
+                                    }
+                                    linearLayout {
+                                        COLORS.forEach { color ->
+                                            colorSelectButton(color) {
+                                                onClick {
+                                                    viewModel.drawColor.value = color
+                                                    colorSelectDialog.dismiss()
+                                                }
+                                            }.lparams {
+                                                padding = dip(4)
+                                                rightMargin = dip(36)
+                                            }
+                                        }
+                                    }.lparams {
+                                        width = matchParent
+                                        height = wrapContent
+                                        margin = dip(16)
+                                    }
+                                }
+                            }
+                        }.show() // show color change dialog
+                    }
+                }.lparams {
+                    height = dip(36)
+                    width = dip(36)
+                    alignParentRight()
+                    centerVertically()
+                    rightMargin = dip(4)
                 }
             }.lparams {
                 width = matchParent
@@ -154,7 +200,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
 
         //Listeners
 
-        viewModel.isEditing.observe(this, Observer {
+        viewModel.isEditing.observe(this, Observer
+        {
             if (it) {
                 editButton.text = "Stop editing"
                 zoomView.mode = CanvasMode.MODE_DRAW
@@ -165,7 +212,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                 undoRedoButtonBar.visibility = GONE
             }
         })
-        viewModel.isTreeShown.observe(this, Observer {
+        viewModel.isTreeShown.observe(this, Observer
+        {
             if (it) {
                 showHideTreeButton.text = "Hide tree"
                 treeView.visibility = VISIBLE
@@ -183,7 +231,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                 branchButton.visibility = GONE
             }
         })*/
-        viewModel.isCanvasFresh.observe(this, Observer {
+        viewModel.isCanvasFresh.observe(this, Observer
+        {
             if (it) {
                 if (zoomView.height > 0) { // make sure the view has actually been inflated before trying to reset the bitmap
                     zoomView.reinitFrontBitmap()
@@ -191,6 +240,21 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                 zoomView.invalidate()
             }
             treeView.invalidate()
+            if (viewModel.currentNode.color == null) viewModel.currentNode.color = viewModel.drawColor.value!!
+        })
+        viewModel.drawColor.observe(this, Observer {
+            zoomView.paint.color = viewModel.drawColor.value!!
+            if (viewModel.currentNode.isActive) { // we can only change the color of a node if we're still working on it
+                viewModel.currentNode.color = viewModel.drawColor.value
+                viewModel.undoRedoStack.forEach {
+                    it.changeColor(viewModel.drawColor.value!!)
+                }
+                /* there's a problem here: if we return to an active node from elsewhere, we can't change the color any more. I need to implement
+                 * preservation of the undo/redo stack under change of node.
+                 */
+                zoomView.invalidate()
+                treeView.invalidate()
+            }
         })
     }
 

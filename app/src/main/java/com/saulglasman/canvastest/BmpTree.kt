@@ -56,7 +56,7 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, nu
                 .forEach { it.coords = Pair(it.coords.first, it.coords.second + 1) } //shuffle along the remaining nodes in the column
         val newNode = TreeNode(parent = currentNode, coords = Pair(i + 1, newNodeYCoord))
         nodes.add(newNode)
-        currentNode.isLeaf = false
+        currentNode.isActive = false
         return newNode
     }
 
@@ -65,5 +65,5 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, nu
     fun getDescendantsIncludingSelf(node: TreeNode): List<TreeNode> = if (getChildren(node).isEmpty()) listOf(node)
     else getChildren(node).flatMap { getDescendantsIncludingSelf(it) }.plus(node)
 
-    data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>, var isLeaf: Boolean = true /*isLeaf isn't yet used, but will be...*/)
+    data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>, var color: Int? = null, var isActive: Boolean = true /*isActive isn't yet used, but will be...*/)
 }
