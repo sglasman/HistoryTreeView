@@ -3,9 +3,6 @@ package com.saulglasman.canvastest
 import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffColorFilter
 import android.os.Bundle
 import android.view.View.GONE
 import android.view.View.VISIBLE
@@ -23,7 +20,9 @@ import org.jetbrains.anko.*
 import org.jetbrains.anko.sdk25.coroutines.onClick
 
 @Suppress("EXPERIMENTAL_FEATURE_WARNING", "NestedLambdaShadowedImplicitParameter")
-class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
+class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTreeView.HistoryTreeViewListener {
+
+
     lateinit var viewModel: HistoryTreeViewModel
 
     lateinit var zoomView: HistoryTreeView
@@ -46,7 +45,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
         }
         viewModel = ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java)
         relativeLayout {
-            zoomView = historyTreeView(viewModel) {
+            zoomView = historyTreeView(viewModel, this@MainActivity) {
                 id = ID_MAINVIEW
             }.lparams {
                 alignParentTop()
@@ -64,16 +63,15 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                 commitButton = button("Commit") {
                     id = ID_COMMITBUTTON
                     onClick {
-                        viewModel.currentNode.bmp = overlayBmpList(viewModel.undoRedoStack.take(viewModel.stackPointer)) //necessary in case there have been some undos
+                        viewModel.currentNode.bmp = overlayBmpList(viewModel.currentNode.undoRedoStack.take(viewModel.currentNode.stackPointer)) //necessary in case there have been some undos
                         if (viewModel.currentNode.bmp == null) {
                             make(zoomView, "Nothing to commit", LENGTH_SHORT).show()
                         } else {
-                            viewModel.currentNode.isActive = false
                             viewModel.arrangeBmps()
-                            viewModel.isCanvasFresh.value = true
+                            viewModel.currentNode.markInactive()
                             viewModel.isCommitted.value = true
                             viewModel.isEditing.value = false
-                            zoomView.reinitFrontBitmap()
+                            zoomView.resetUndoRedoStack()
                         }
                     }
                 }.lparams { rightOf(ID_EDITBUTTON) }
@@ -169,16 +167,16 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                 visibility = GONE
                 undoButton = button("Undo") {
                     onClick {
-                        if (viewModel.stackPointer > 0) {
-                            viewModel.stackPointer--
+                        if (viewModel.currentNode.stackPointer > 0) {
+                            viewModel.currentNode.stackPointer--
                             zoomView.invalidate()
                         }
                     }
                 }
                 redoButton = button("Redo") {
                     onClick {
-                        if (viewModel.stackPointer < viewModel.undoRedoStack.size) {
-                            viewModel.stackPointer++
+                        if (viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size) {
+                            viewModel.currentNode.stackPointer++
                             zoomView.invalidate()
                         }
                     }
@@ -231,23 +229,25 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
                 branchButton.visibility = GONE
             }
         })*/
+/*
         viewModel.isCanvasFresh.observe(this, Observer
         {
             if (it) {
                 if (zoomView.height > 0) { // make sure the view has actually been inflated before trying to reset the bitmap
-                    zoomView.reinitFrontBitmap()
+                    zoomView.resetUndoRedoStack()
                 }
                 zoomView.invalidate()
             }
             treeView.invalidate()
             if (viewModel.currentNode.color == null) viewModel.currentNode.color = viewModel.drawColor.value!!
         })
+*/
         viewModel.drawColor.observe(this, Observer {
-            zoomView.paint.color = viewModel.drawColor.value!!
+            zoomView.paint.color = viewModel.drawColor.value ?: zoomView.paint.color
             if (viewModel.currentNode.isActive) { // we can only change the color of a node if we're still working on it
                 viewModel.currentNode.color = viewModel.drawColor.value
-                viewModel.undoRedoStack.forEach {
-                    it.changeColor(viewModel.drawColor.value!!)
+                viewModel.currentNode.undoRedoStack.forEach {
+                    it.changeColor(zoomView.paint.color)
                 }
                 /* there's a problem here: if we return to an active node from elsewhere, we can't change the color any more. I need to implement
                  * preservation of the undo/redo stack under change of node.
@@ -257,6 +257,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
             }
         })
     }
+
+    // Interface functions from child views
 
     override fun deleteNode(node: BmpTree.TreeNode) {
         if (node == viewModel.tree.rootNode) {
@@ -279,7 +281,15 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener {
 
     override fun changeToNode(node: BmpTree.TreeNode) {
         viewModel.currentNode = node
-        viewModel.reset()
+        zoomView.invalidate()
+        treeView.invalidate()
+        viewModel.isEditing.value = false
+        if (node.isActive) viewModel.drawColor.value = node.color
+    }
+
+    override fun addNewNodeAt(node: BmpTree.TreeNode) {
+        viewModel.currentNode = viewModel.tree.addNewNodeAt(node, zoomView.paint.color)
+        treeView.invalidate()
     }
 }
 

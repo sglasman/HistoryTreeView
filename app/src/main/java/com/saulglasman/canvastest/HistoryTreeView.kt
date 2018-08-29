@@ -17,7 +17,7 @@ import java.io.File
 import java.lang.Math.*
 
 @SuppressLint("ViewConstructor")
-class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : ImageView(context) {
+class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val listener: HistoryTreeViewListener) : ImageView(context) {
     val paint = Paint()
     val path = Path()
     private val scaleGestureDetector: ScaleGestureDetector = ScaleGestureDetector(context, ZoomListener())
@@ -43,6 +43,10 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
         pdfBitmap = renderer.renderImageWithDPI(0, DisplayMetrics.DENSITY_DEFAULT.toFloat(), Bitmap.Config.ARGB_8888)*/
     }
 
+    interface HistoryTreeViewListener {
+        fun addNewNodeAt(node: BmpTree.TreeNode)
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
@@ -54,9 +58,8 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
             renderer.openPage(0).render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
             viewModel.currentNode.bmp = viewModel.backBitmap!!
         }
-
-  /*      pathCanvas = Canvas(viewModel.frontBitmap)
-        pathCanvas.drawColor(Color.TRANSPARENT)*/
+        /*      pathCanvas = Canvas(viewModel.frontBitmap)
+              pathCanvas.drawColor(Color.TRANSPARENT)*/
     }
 
     override fun onDraw(canvas: Canvas?) {
@@ -66,7 +69,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
         canvas.translate(viewModel.transformer.translateX, viewModel.transformer.translateY)
 
         canvas.drawBitmap(viewModel.backBitmap!!, 0f, 0f, null)
-        canvas.drawBitmap(overlayBmpList(viewModel.undoRedoStack.take(viewModel.stackPointer)), 0f, 0f, paint)
+        canvas.drawBitmap(overlayBmpList(viewModel.currentNode.undoRedoStack.take(viewModel.currentNode.stackPointer)), 0f, 0f, paint)
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
@@ -94,11 +97,9 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
 
     private fun touchUp() {
         if (mode == CanvasMode.MODE_DRAW) {
-            if (viewModel.isCanvasFresh.value!!) {
-                viewModel.currentNode = viewModel.tree.addNewNodeAt(viewModel.currentNode)
-                viewModel.isCanvasFresh.value = false
-            }
-            viewModel.currentNode.bmp = overlayBmpList(viewModel.undoRedoStack)
+
+            viewModel.currentNode.bmp = overlayBmpList(viewModel.currentNode.undoRedoStack)
+
             path.reset()
         }
     }
@@ -127,10 +128,15 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
     private fun touchStart(x: Float, y: Float) {
         val (transformedX, transformedY) = viewModel.transformer.transform(Coord(x, y))
         if (mode == CanvasMode.MODE_DRAW) {
-            viewModel.undoRedoStack = viewModel.undoRedoStack.take(viewModel.stackPointer).toMutableList()
-            viewModel.undoRedoStack.add(Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888))
-            pathCanvas = Canvas(viewModel.undoRedoStack[viewModel.stackPointer])
-            viewModel.stackPointer++
+            if (!viewModel.currentNode.isActive) {
+                listener.addNewNodeAt(viewModel.currentNode)
+            }
+            if (viewModel.currentNode.undoRedoStack.isNotEmpty()) {
+                viewModel.currentNode.undoRedoStack = viewModel.currentNode.undoRedoStack.take(viewModel.currentNode.stackPointer).toMutableList()
+            }
+            viewModel.currentNode.undoRedoStack.add(Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888))
+            pathCanvas = Canvas(viewModel.currentNode.undoRedoStack[viewModel.currentNode.stackPointer])
+            viewModel.currentNode.stackPointer++
 
             pathCanvas.drawPoint(transformedX, transformedY, paint)
 
@@ -142,9 +148,9 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
         }
     }
 
-    fun reinitFrontBitmap() {
-        viewModel.undoRedoStack = mutableListOf()
-        viewModel.stackPointer = 0
+    fun resetUndoRedoStack() {
+        viewModel.currentNode.undoRedoStack = mutableListOf()
+        viewModel.currentNode.stackPointer = 0
     }
 
     inner class ZoomListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -161,6 +167,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel) : I
             invalidate()
             return super.onScale(detector)
         }
+
         private fun smoothing(x: Float) = if (x > 1) (5f / 4) else (4f / 5)
     }
 

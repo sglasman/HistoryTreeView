@@ -8,12 +8,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
 class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
-                           var undoRedoStack: MutableList<Bitmap> = mutableListOf(),
                            var transformer: CanvasTransformer = CanvasTransformer(),
                            val tree: BmpTree = BmpTree(),
                            var currentNode: BmpTree.TreeNode = tree.nodeAtCoords(Pair(0, 0))!!,
-                           var stackPointer: Int = 0,
-                           var isCanvasFresh: MutableLiveData<Boolean> = MutableLiveData(),
                            var isTreeShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isEditing: MutableLiveData<Boolean> = MutableLiveData(),
                            var isCommitted: MutableLiveData<Boolean> = MutableLiveData(),
@@ -21,8 +18,11 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
 
     fun reset() {
         arrangeBmps()
-        isCanvasFresh.value = true
         isEditing.value = false
+    }
+
+    fun setStackPointers(value: Int) {
+        currentNode.stackPointer = value
     }
 
     fun arrangeBmps() {
@@ -37,7 +37,6 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
         isEditing.value = false
         isTreeShown.value = false
         isCommitted.value = false
-        isCanvasFresh.value = true
         drawColor.value = Color.BLACK
     }
 }

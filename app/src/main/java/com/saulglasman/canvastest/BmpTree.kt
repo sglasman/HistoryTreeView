@@ -1,6 +1,7 @@
 package com.saulglasman.canvastest
 
 import android.graphics.Bitmap
+import android.graphics.Color
 
 /*class BmpTree(var nodeBmp: Bitmap? = null, var kids: MutableList<BmpTree> = mutableListOf()) : Serializable {
     fun addKid(kid: BmpTree) {
@@ -29,7 +30,7 @@ import android.graphics.Bitmap
 /*val testTree: BmpTree = BmpTree(mutableListOf(mutableListOf<Bitmap?>(null, null), mutableListOf<Bitmap?>(null, null, null)),
         mutableListOf(mutableListOf(Pair(0, 0), Pair(0, 1), Pair(1, 2))))*/
 
-class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, null, Pair(0, 0)))) {
+class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords = Pair(0, 0), isActive = false, color = Color.BLACK))) {
 
     /* `nodes` is a list of tree nodes, each of which carries the data of its parent (unless it's the root),
      * its position in the plane and maybe a bitmap.
@@ -47,16 +48,16 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, nu
         return getLineage(node.parent).plus(node)
     }
 
-    fun addNewNodeAt(currentNode: TreeNode): TreeNode {
+    fun addNewNodeAt(currentNode: TreeNode, newNodeColor: Int): TreeNode {
         val (i, j) = currentNode.coords
         val nodesAboveNewNode: List<TreeNode> = nodes.filter { it.coords.first == i && it.coords.second <= j }
                 .flatMap { getChildren(it) }
         val newNodeYCoord = if (nodesAboveNewNode.isEmpty()) 0 else (nodesAboveNewNode.map { it.coords.second }.max()!!) + 1 //figure out where to slot in the new node in the plane layout of the tree
         nodes.filter { it.coords.first == i + 1 && it.coords.second >= newNodeYCoord }
                 .forEach { it.coords = Pair(it.coords.first, it.coords.second + 1) } //shuffle along the remaining nodes in the column
-        val newNode = TreeNode(parent = currentNode, coords = Pair(i + 1, newNodeYCoord))
+        val newNode = TreeNode(parent = currentNode, coords = Pair(i + 1, newNodeYCoord), color = newNodeColor)
         nodes.add(newNode)
-        currentNode.isActive = false
+        currentNode.markInactive()
         return newNode
     }
 
@@ -65,5 +66,13 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(null, nu
     fun getDescendantsIncludingSelf(node: TreeNode): List<TreeNode> = if (getChildren(node).isEmpty()) listOf(node)
     else getChildren(node).flatMap { getDescendantsIncludingSelf(it) }.plus(node)
 
-    data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>, var color: Int? = null, var isActive: Boolean = true /*isActive isn't yet used, but will be...*/)
+    data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>,
+                        var color: Int? = null, var isActive: Boolean = true, var undoRedoStack: MutableList<Bitmap> = mutableListOf(),
+                        var stackPointer: Int = 0) {
+
+        fun markInactive() {
+            this.isActive = false
+            this.undoRedoStack.clear()
+        }
+    }
 }
