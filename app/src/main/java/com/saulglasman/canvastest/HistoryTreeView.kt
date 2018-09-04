@@ -45,6 +45,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
 
     interface HistoryTreeViewListener {
         fun addNewNodeAt(node: BmpTree.TreeNode)
+        fun enableDisableUndoRedoButtons()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -137,6 +138,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
             viewModel.currentNode.undoRedoStack.add(Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888))
             pathCanvas = Canvas(viewModel.currentNode.undoRedoStack[viewModel.currentNode.stackPointer])
             viewModel.currentNode.stackPointer++
+            listener.enableDisableUndoRedoButtons()
 
             pathCanvas.drawPoint(transformedX, transformedY, paint)
 

@@ -2,6 +2,7 @@ package com.saulglasman.canvastest
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import java.io.Serializable
 
 /*class BmpTree(var nodeBmp: Bitmap? = null, var kids: MutableList<BmpTree> = mutableListOf()) : Serializable {
     fun addKid(kid: BmpTree) {
@@ -30,7 +31,7 @@ import android.graphics.Color
 /*val testTree: BmpTree = BmpTree(mutableListOf(mutableListOf<Bitmap?>(null, null), mutableListOf<Bitmap?>(null, null, null)),
         mutableListOf(mutableListOf(Pair(0, 0), Pair(0, 1), Pair(1, 2))))*/
 
-class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords = Pair(0, 0), isActive = false, color = Color.BLACK))) {
+class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords = Pair(0, 0), isActive = false, color = Color.BLACK))): Serializable {
 
     /* `nodes` is a list of tree nodes, each of which carries the data of its parent (unless it's the root),
      * its position in the plane and maybe a bitmap.
@@ -68,7 +69,7 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords =
 
     data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>,
                         var color: Int? = null, var isActive: Boolean = true, var undoRedoStack: MutableList<Bitmap> = mutableListOf(),
-                        var stackPointer: Int = 0) {
+                        var stackPointer: Int = 0): Serializable {
 
         fun markInactive() {
             this.isActive = false

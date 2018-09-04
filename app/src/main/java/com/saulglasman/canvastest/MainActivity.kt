@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
+import android.util.Log
 import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.widget.Button
@@ -18,6 +20,9 @@ import com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
 import com.google.android.material.snackbar.Snackbar.make
 import org.jetbrains.anko.*
 import org.jetbrains.anko.sdk25.coroutines.onClick
+import java.io.File
+import java.io.FileOutputStream
+import java.io.ObjectOutputStream
 
 @Suppress("EXPERIMENTAL_FEATURE_WARNING", "NestedLambdaShadowedImplicitParameter")
 class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTreeView.HistoryTreeViewListener {
@@ -37,11 +42,17 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     lateinit var treeView: TreeView
     lateinit var colorSelectDialog: DialogInterface
 
+    var filename = "sample"
+    val TAG = this::class.java.simpleName
+
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
             ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, 1)
+        }
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+            ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, 2)
         }
         viewModel = ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java)
         relativeLayout {
@@ -114,6 +125,11 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                     id = ID_TREEBUTTON
                     onClick { viewModel.isTreeShown.value = !viewModel.isTreeShown.value!! }
                 }.lparams { rightOf(ID_COMMITBUTTON) }
+                button {
+                    onClick {
+                        writeOutCurrentTree()
+                    }
+                }.lparams { rightOf(ID_TREEBUTTON) }
                 colorChangeButton = imageView {
                     id = ID_COLORCHANGEBUTTON
                     image = getDrawable(R.drawable.square)
@@ -166,18 +182,24 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 id = ID_UNDOREDOBAR
                 visibility = GONE
                 undoButton = button("Undo") {
+                    id = ID_UNDOBUTTON
+                    isEnabled = false
                     onClick {
                         if (viewModel.currentNode.stackPointer > 0) {
                             viewModel.currentNode.stackPointer--
                             zoomView.invalidate()
+                            enableDisableUndoRedoButtons()
                         }
                     }
                 }
                 redoButton = button("Redo") {
+                    id = ID_REDOBUTTON
+                    isEnabled = false
                     onClick {
                         if (viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size) {
                             viewModel.currentNode.stackPointer++
                             zoomView.invalidate()
+                            enableDisableUndoRedoButtons()
                         }
                     }
                 }
@@ -249,9 +271,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 viewModel.currentNode.undoRedoStack.forEach {
                     it.changeColor(zoomView.paint.color)
                 }
-                /* there's a problem here: if we return to an active node from elsewhere, we can't change the color any more. I need to implement
-                 * preservation of the undo/redo stack under change of node.
-                 */
                 zoomView.invalidate()
                 treeView.invalidate()
             }
@@ -260,6 +279,11 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
     // Interface functions from child views
 
+    override fun enableDisableUndoRedoButtons() {
+        redoButton.isEnabled = viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size
+        undoButton.isEnabled = viewModel.currentNode.stackPointer > 0
+    }
+
     override fun deleteNode(node: BmpTree.TreeNode) {
         if (node == viewModel.tree.rootNode) {
             return
@@ -267,7 +291,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         alert("Delete this node and all its descendants? This cannot be undone.") {
             positiveButton("Proceed") {
                 if (viewModel.tree.getLineage(viewModel.currentNode).contains(node)) { // would the current node be deleted?
-                    viewModel.currentNode = node.parent!! // if so, move it back to the parent of the node to be deleted
+                    changeToNode(node.parent!!) // if so, move it back to the parent of the node to be deleted
                     viewModel.reset()
                 }
                 viewModel.tree.getDescendantsIncludingSelf(node).forEach {
@@ -283,13 +307,25 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         viewModel.currentNode = node
         zoomView.invalidate()
         treeView.invalidate()
-        viewModel.isEditing.value = false
+        if (!node.isActive) viewModel.isEditing.value = false
         if (node.isActive) viewModel.drawColor.value = node.color
+        enableDisableUndoRedoButtons()
     }
 
     override fun addNewNodeAt(node: BmpTree.TreeNode) {
         viewModel.currentNode = viewModel.tree.addNewNodeAt(node, zoomView.paint.color)
         treeView.invalidate()
+        enableDisableUndoRedoButtons()
+    }
+
+    // Filesystem related functions
+
+    fun writeOutCurrentTree() {
+        val fos = FileOutputStream(File(Environment.getExternalStorageDirectory(), filename + "_"))
+        val os = ObjectOutputStream(fos)
+        os.writeObject(viewModel.tree)
+        os.close()
+        fos.close()
+        Log.d(TAG, "Wrote out file")
     }
 }
-
