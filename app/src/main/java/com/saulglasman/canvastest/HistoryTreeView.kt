@@ -98,9 +98,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
 
     private fun touchUp() {
         if (mode == CanvasMode.MODE_DRAW) {
-
             viewModel.currentNode.bmp = overlayBmpList(viewModel.currentNode.undoRedoStack)
-
             path.reset()
         }
     }

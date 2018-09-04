@@ -67,13 +67,14 @@ class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords =
     fun getDescendantsIncludingSelf(node: TreeNode): List<TreeNode> = if (getChildren(node).isEmpty()) listOf(node)
     else getChildren(node).flatMap { getDescendantsIncludingSelf(it) }.plus(node)
 
-    data class TreeNode(var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>,
-                        var color: Int? = null, var isActive: Boolean = true, var undoRedoStack: MutableList<Bitmap> = mutableListOf(),
+    data class TreeNode(@Transient var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>,
+                        var color: Int? = null, var isActive: Boolean = true, @Transient var undoRedoStack: MutableList<Bitmap> = mutableListOf(),
                         var stackPointer: Int = 0): Serializable {
 
         fun markInactive() {
             this.isActive = false
             this.undoRedoStack.clear()
+            this.stackPointer = 0
         }
     }
 }

@@ -3,8 +3,9 @@ package com.saulglasman.canvastest
 import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
 import android.view.View.GONE
 import android.view.View.VISIBLE
@@ -20,13 +21,11 @@ import com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
 import com.google.android.material.snackbar.Snackbar.make
 import org.jetbrains.anko.*
 import org.jetbrains.anko.sdk25.coroutines.onClick
-import java.io.File
-import java.io.FileOutputStream
-import java.io.ObjectOutputStream
+import java.io.*
+import java.lang.Integer.parseInt
 
 @Suppress("EXPERIMENTAL_FEATURE_WARNING", "NestedLambdaShadowedImplicitParameter")
 class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTreeView.HistoryTreeViewListener {
-
 
     lateinit var viewModel: HistoryTreeViewModel
 
@@ -78,56 +77,24 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         if (viewModel.currentNode.bmp == null) {
                             make(zoomView, "Nothing to commit", LENGTH_SHORT).show()
                         } else {
-                            viewModel.arrangeBmps()
                             viewModel.currentNode.markInactive()
+                            viewModel.arrangeBmps()
                             viewModel.isCommitted.value = true
                             viewModel.isEditing.value = false
                             zoomView.resetUndoRedoStack()
                         }
                     }
                 }.lparams { rightOf(ID_EDITBUTTON) }
-/*                branchButton = button("New branch") {
-                    onClick {
-                        var colorToSet: Int = zoomView.paint.color
-                        alert("Select color:") {
-                            customView {
-                                linearLayout {
-                                    padding = dip(50)
-                                    button {
-                                        setBackgroundColor(Color.BLACK)
-                                        onClick {
-                                            colorToSet = Color.BLACK
-                                        }
-                                    }.lparams {
-                                        height = matchParent
-                                        width = dip(50)
-                                    }
-                                    button {
-                                        setBackgroundColor(Color.RED)
-                                        onClick {
-                                            colorToSet = Color.RED
-                                        }
-                                    }.lparams {
-                                        height = matchParent
-                                        width = dip(50)
-                                    }
-                                }
-                            }
-                            yesButton {
-                                zoomView.paint.color = colorToSet
-                            }
-                            noButton {
-                            }
-                        }.show()
-                    }
-                }*/
                 showHideTreeButton = button {
                     id = ID_TREEBUTTON
                     onClick { viewModel.isTreeShown.value = !viewModel.isTreeShown.value!! }
                 }.lparams { rightOf(ID_COMMITBUTTON) }
                 button {
                     onClick {
-                        writeOutCurrentTree()
+                        viewModel.arrangeBmps()
+                        doAsync {
+                            writeOutCurrentTree()
+                        }
                     }
                 }.lparams { rightOf(ID_TREEBUTTON) }
                 colorChangeButton = imageView {
@@ -203,6 +170,21 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         }
                     }
                 }
+                button("Load") {
+                    onClick {
+                        doAsync {
+                            val loadedTree = loadTree()
+                            uiThread {
+                                viewModel.tree = loadedTree
+                                treeView.refreshNodeCoordMaps()
+                                viewModel.arrangeBmps()
+                                viewModel.currentNode = viewModel.tree.rootNode
+                                treeView.invalidate()
+                                zoomView.invalidate()
+                            }
+                        }
+                    }
+                }
             }.lparams {
                 width = matchParent
                 height = wrapContent
@@ -242,28 +224,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 treeView.visibility = GONE
             }
         })
-/*        viewModel.isCommitted.observe(this, Observer {
-            if (it) {
-                commitButton.visibility = GONE
-                branchButton.visibility = VISIBLE
-            } else {
-                commitButton.visibility = VISIBLE
-                branchButton.visibility = GONE
-            }
-        })*/
-/*
-        viewModel.isCanvasFresh.observe(this, Observer
-        {
-            if (it) {
-                if (zoomView.height > 0) { // make sure the view has actually been inflated before trying to reset the bitmap
-                    zoomView.resetUndoRedoStack()
-                }
-                zoomView.invalidate()
-            }
-            treeView.invalidate()
-            if (viewModel.currentNode.color == null) viewModel.currentNode.color = viewModel.drawColor.value!!
-        })
-*/
         viewModel.drawColor.observe(this, Observer {
             zoomView.paint.color = viewModel.drawColor.value ?: zoomView.paint.color
             if (viewModel.currentNode.isActive) { // we can only change the color of a node if we're still working on it
@@ -305,6 +265,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
     override fun changeToNode(node: BmpTree.TreeNode) {
         viewModel.currentNode = node
+        viewModel.arrangeBmps()
         zoomView.invalidate()
         treeView.invalidate()
         if (!node.isActive) viewModel.isEditing.value = false
@@ -320,12 +281,77 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
     // Filesystem related functions
 
-    fun writeOutCurrentTree() {
-        val fos = FileOutputStream(File(Environment.getExternalStorageDirectory(), filename + "_"))
-        val os = ObjectOutputStream(fos)
-        os.writeObject(viewModel.tree)
-        os.close()
-        fos.close()
-        Log.d(TAG, "Wrote out file")
+    private fun writeOutCurrentTree() {
+        viewModel.tree.nodes.forEach {
+            var fos: FileOutputStream? = null
+            try {
+                fos = FileOutputStream(File(filesDir, "${filename}_${it.coords.first}_${it.coords.second}"))
+                it.bmp?.compress(Bitmap.CompressFormat.PNG, 100, fos)
+                Log.d(TAG, "Wrote bitmap (${it.coords.first}, ${it.coords.second})")
+            } catch (error: Throwable) {
+                Log.e(TAG, "Error writing bitmap file", error)
+            } finally {
+                fos?.close()
+            }
+        }
+        var dataFos: FileOutputStream? = null
+        var dataOos: ObjectOutputStream? = null
+        try {
+            dataFos = FileOutputStream(File(filesDir, "${filename}_data"))
+            dataOos = ObjectOutputStream(dataFos)
+            dataOos.writeObject(viewModel.tree)
+            Log.d(TAG, "Wrote data file")
+        } catch (error: Throwable) {
+            Log.e(TAG, "Error writing data file", error)
+        } finally {
+            dataFos?.close()
+            dataOos?.close()
+        }
+        Log.d(TAG, "Files in data directory: ${
+        filesDir.listFiles().map { it.name }
+        }")
+    }
+
+    private fun loadTree(): BmpTree {
+        val regex = Regex(FILE_REGEX_STRING)
+        var dataFis: FileInputStream? = null
+        var dataOis: ObjectInputStream? = null
+        var tree = BmpTree()
+        try {
+            dataFis = FileInputStream(File(filesDir, "${filename}_data"))
+            dataOis = ObjectInputStream(dataFis)
+            tree = dataOis.readObject() as BmpTree
+            tree.nodes.forEach {
+                it.undoRedoStack = mutableListOf()
+                it.stackPointer = 0
+                it.isActive = false
+            }
+            Log.d(TAG, "Successfully loaded data file. Nodes: ${viewModel.tree.nodes.size}.")
+        } catch (error: Throwable) {
+            Log.e(TAG, "Error reading data file", error)
+        } finally {
+            dataFis?.close()
+            dataOis?.close()
+        }
+        filesDir.listFiles().forEach {
+            var fis: FileInputStream? = null
+            if (regex.matchEntire(it.name) != null) {
+                val (name, coord1, coord2) = regex.matchEntire(it.name)!!.destructured
+                Log.d(TAG, "File found: $name, $coord1, $coord2")
+                if (name == filename) {
+                    try {
+                        fis = FileInputStream(it)
+                        val bitmap = BitmapFactory.decodeFile(it.path, BitmapFactory.Options().apply {inMutable = true})
+                        if (tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2))) != null) Log.d(TAG, "Yes: $coord1, $coord2")
+                        tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2)))?.bmp = bitmap
+                    } catch (error: Throwable) {
+                        Log.e(TAG, "Error reading file ${it.name}", error)
+                    } finally {
+                        fis?.close()
+                    }
+                }
+            }
+        }
+        return tree
     }
 }

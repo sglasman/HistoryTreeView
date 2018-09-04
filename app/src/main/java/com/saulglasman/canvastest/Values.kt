@@ -18,6 +18,8 @@ const val ID_REDOBUTTON = 111
 const val STROKE_WIDTH = 12f
 const val TREEVIEW_CLICK_TOLERANCE = 12f
 
+const val FILE_REGEX_STRING = "(.*)_(\\d+)_(\\d+)"
+
 val COLORS: List<Int> = listOf(Color.BLACK, Color.RED, Color.parseColor("#009874") /*emerald green*/, Color.BLUE)
 
 var PERMISSIONS_STORAGE: Array<String> = arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE,

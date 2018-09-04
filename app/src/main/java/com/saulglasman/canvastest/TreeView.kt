@@ -64,7 +64,7 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
         refreshNodeCoordMaps()
     }
 
-    private fun refreshNodeCoordMaps() {
+    fun refreshNodeCoordMaps() {
         nodeToCoordMap = viewModel.tree.nodes
                 .associateBy({ it }, { getCanvasCoords(it) })
         coordToNodeMap = viewModel.tree.nodes
@@ -119,5 +119,4 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
     private fun Pair<Float, Float>.isCloseEnoughTo(other: Pair<Float, Float>): Boolean {
         return (abs(this.first - other.first) <= TREEVIEW_CLICK_TOLERANCE && abs(this.second - other.second) <= TREEVIEW_CLICK_TOLERANCE) //use l^1 distance, why not
     }
-
 }
