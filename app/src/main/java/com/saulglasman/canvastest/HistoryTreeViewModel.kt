@@ -14,15 +14,13 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
                            var isTreeShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isEditing: MutableLiveData<Boolean> = MutableLiveData(),
                            var isCommitted: MutableLiveData<Boolean> = MutableLiveData(),
-                           var drawColor: MutableLiveData<Int> = MutableLiveData()) : ViewModel() {
+                           var drawColor: MutableLiveData<Int> = MutableLiveData(),
+                           var undoEnabled: MutableLiveData<Boolean> = MutableLiveData(),
+                           var redoEnabled: MutableLiveData<Boolean> = MutableLiveData()) : ViewModel() {
 
     fun reset() {
         arrangeBmps()
         isEditing.value = false
-    }
-
-    fun setStackPointers(value: Int) {
-        currentNode.stackPointer = value
     }
 
     fun arrangeBmps() {
@@ -37,6 +35,8 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
         isEditing.value = false
         isTreeShown.value = false
         isCommitted.value = false
+        undoEnabled.value = false
+        redoEnabled.value = false
         drawColor.value = Color.BLACK
     }
 }

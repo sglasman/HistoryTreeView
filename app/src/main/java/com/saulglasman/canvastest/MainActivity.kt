@@ -5,6 +5,7 @@ import android.content.DialogInterface
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.View.GONE
@@ -30,14 +31,12 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     lateinit var viewModel: HistoryTreeViewModel
 
     lateinit var zoomView: HistoryTreeView
-    lateinit var editButton: Button
-    lateinit var commitButton: Button
-    lateinit var branchButton: Button
-    lateinit var showHideTreeButton: Button
+    lateinit var editButton: ImageView
+    lateinit var commitButton: ImageView
+    lateinit var showHideTreeButton: ImageView
     lateinit var colorChangeButton: ImageView
-    lateinit var undoButton: Button
-    lateinit var redoButton: Button
-    lateinit var undoRedoButtonBar: LinearLayout
+    lateinit var undoButton: ImageView
+    lateinit var redoButton: ImageView
     lateinit var treeView: TreeView
     lateinit var colorSelectDialog: DialogInterface
 
@@ -64,14 +63,24 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             }
             relativeLayout {
                 id = ID_BUTTONBAR
-                editButton = button {
+                backgroundColor = Color.LTGRAY
+                editButton = imageView {
                     id = ID_EDITBUTTON
+                    image = getDrawable(R.drawable.ic_pencil)
+                    padding = dip(4)
                     onClick {
                         viewModel.isEditing.value = !(viewModel.isEditing.value!!)
                     }
-                }.lparams { alignParentLeft() }
-                commitButton = button("Commit") {
+                }.lparams {
+                    alignParentLeft()
+                    padding = dip(12)
+                    rightMargin = dip(32)
+                }
+                commitButton = imageView {
                     id = ID_COMMITBUTTON
+                    visibility = GONE
+                    image = getDrawable(R.drawable.ic_check_mark)
+                    padding = dip(4)
                     onClick {
                         viewModel.currentNode.bmp = overlayBmpList(viewModel.currentNode.undoRedoStack.take(viewModel.currentNode.stackPointer)) //necessary in case there have been some undos
                         if (viewModel.currentNode.bmp == null) {
@@ -84,19 +93,70 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                             zoomView.resetUndoRedoStack()
                         }
                     }
-                }.lparams { rightOf(ID_EDITBUTTON) }
-                showHideTreeButton = button {
+                }.lparams {
+                    rightOf(ID_EDITBUTTON)
+                    padding = dip(12)
+                    rightMargin = dip(32)
+                }
+                showHideTreeButton = imageView {
                     id = ID_TREEBUTTON
+                    image = getDrawable(R.drawable.ic_tree)
+                    padding = dip(4)
                     onClick { viewModel.isTreeShown.value = !viewModel.isTreeShown.value!! }
-                }.lparams { rightOf(ID_COMMITBUTTON) }
-                button {
+                }.lparams {
+                    rightOf(ID_COMMITBUTTON)
+                    padding = dip(12)
+                    rightMargin = dip(32)
+
+                }
+                undoButton = imageView {
+                    id = ID_UNDOBUTTON
+                    isEnabled = false
+                    image = getDrawable(R.drawable.ic_undo_arrow_pale)
+                    padding = dip(4)
+                    onClick {
+                        if (viewModel.currentNode.stackPointer > 0) {
+                            viewModel.currentNode.stackPointer--
+                            zoomView.invalidate()
+                            enableDisableUndoRedoButtons()
+                        }
+                    }
+                }.lparams {
+                    rightOf(ID_TREEBUTTON)
+                    padding = dip(12)
+                    rightMargin = dip(32)
+                }
+                redoButton = imageView {
+                    id = ID_REDOBUTTON
+                    isEnabled = false
+                    image = getDrawable(R.drawable.ic_redo_arrow_pale)
+                    padding = dip(4)
+                    onClick {
+                        if (viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size) {
+                            viewModel.currentNode.stackPointer++
+                            zoomView.invalidate()
+                            enableDisableUndoRedoButtons()
+                        }
+                    }
+                }.lparams {
+                    rightOf(ID_UNDOBUTTON)
+                    padding = dip(12)
+                    rightMargin = dip(32)
+                }
+/*                imageView {
+                    image = getDrawable(R.drawable.ic_save)
+                    padding = dip(4)
                     onClick {
                         viewModel.arrangeBmps()
                         doAsync {
                             writeOutCurrentTree()
                         }
                     }
-                }.lparams { rightOf(ID_TREEBUTTON) }
+                }.lparams {
+                    rightOf(ID_TREEBUTTON)
+                    padding = dip(12)
+                    rightMargin = dip(32)
+                }*/
                 colorChangeButton = imageView {
                     id = ID_COLORCHANGEBUTTON
                     image = getDrawable(R.drawable.square)
@@ -110,7 +170,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                                     }.lparams {
                                         width = matchParent
                                         height = wrapContent
-                                        padding = dip(16)
+                                        padding = dip(12)
+
                                     }
                                     linearLayout {
                                         COLORS.forEach { color ->
@@ -134,67 +195,23 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         }.show() // show color change dialog
                     }
                 }.lparams {
-                    height = dip(36)
-                    width = dip(36)
+                    height = dip(30)
+                    width = dip(30)
                     alignParentRight()
+                    padding = dip(12)
+                    leftMargin = dip(32)
                     centerVertically()
-                    rightMargin = dip(4)
                 }
             }.lparams {
                 width = matchParent
                 height = wrapContent
                 alignParentBottom()
             }
-            undoRedoButtonBar = linearLayout {
-                id = ID_UNDOREDOBAR
-                visibility = GONE
-                undoButton = button("Undo") {
-                    id = ID_UNDOBUTTON
-                    isEnabled = false
-                    onClick {
-                        if (viewModel.currentNode.stackPointer > 0) {
-                            viewModel.currentNode.stackPointer--
-                            zoomView.invalidate()
-                            enableDisableUndoRedoButtons()
-                        }
-                    }
-                }
-                redoButton = button("Redo") {
-                    id = ID_REDOBUTTON
-                    isEnabled = false
-                    onClick {
-                        if (viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size) {
-                            viewModel.currentNode.stackPointer++
-                            zoomView.invalidate()
-                            enableDisableUndoRedoButtons()
-                        }
-                    }
-                }
-                button("Load") {
-                    onClick {
-                        doAsync {
-                            val loadedTree = loadTree()
-                            uiThread {
-                                viewModel.tree = loadedTree
-                                treeView.refreshNodeCoordMaps()
-                                viewModel.arrangeBmps()
-                                viewModel.currentNode = viewModel.tree.rootNode
-                                treeView.invalidate()
-                                zoomView.invalidate()
-                            }
-                        }
-                    }
-                }
-            }.lparams {
-                width = matchParent
-                height = wrapContent
-                above(ID_BUTTONBAR)
-            }
             treeView = treeView(viewModel, this@MainActivity) {
                 id = ID_TREEVIEW
                 visibility = GONE
             }.lparams {
-                above(ID_UNDOREDOBAR)
+                above(ID_BUTTONBAR)
                 width = matchParent
                 height = dip(100)
             }
@@ -205,22 +222,26 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         viewModel.isEditing.observe(this, Observer
         {
             if (it) {
-                editButton.text = "Stop editing"
+                editButton.backgroundColor = Color.WHITE
                 zoomView.mode = CanvasMode.MODE_DRAW
-                undoRedoButtonBar.visibility = VISIBLE
+                undoButton.visibility = VISIBLE
+                redoButton.visibility = VISIBLE
+                commitButton.visibility = VISIBLE
             } else {
-                editButton.text = "Edit"
+                editButton.backgroundColor = Color.TRANSPARENT
                 zoomView.mode = CanvasMode.MODE_NAV
-                undoRedoButtonBar.visibility = GONE
+                undoButton.visibility = GONE
+                redoButton.visibility = GONE
+                commitButton.visibility = GONE
             }
         })
         viewModel.isTreeShown.observe(this, Observer
         {
             if (it) {
-                showHideTreeButton.text = "Hide tree"
+                showHideTreeButton.backgroundColor = Color.WHITE
                 treeView.visibility = VISIBLE
             } else {
-                showHideTreeButton.text = "Show tree"
+                showHideTreeButton.backgroundColor = Color.TRANSPARENT
                 treeView.visibility = GONE
             }
         })
@@ -235,13 +256,33 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 treeView.invalidate()
             }
         })
+        viewModel.undoEnabled.observe(this, Observer {
+            if (it) {
+                undoButton.image = getDrawable(R.drawable.ic_undo_arrow)
+                undoButton.isEnabled = true
+            }
+            else {
+                undoButton.image = getDrawable(R.drawable.ic_undo_arrow_pale)
+                undoButton.isEnabled = false
+            }
+        })
+        viewModel.redoEnabled.observe(this, Observer {
+            if (it) {
+                redoButton.image = getDrawable(R.drawable.ic_redo_arrow)
+                redoButton.isEnabled = true
+            }
+            else {
+                redoButton.image = getDrawable(R.drawable.ic_redo_arrow_pale)
+                redoButton.isEnabled = false
+            }
+        })
     }
 
     // Interface functions from child views
 
     override fun enableDisableUndoRedoButtons() {
-        redoButton.isEnabled = viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size
-        undoButton.isEnabled = viewModel.currentNode.stackPointer > 0
+        viewModel.redoEnabled.value = viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size
+        viewModel.undoEnabled.value = viewModel.currentNode.stackPointer > 0
     }
 
     override fun deleteNode(node: BmpTree.TreeNode) {
@@ -341,7 +382,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 if (name == filename) {
                     try {
                         fis = FileInputStream(it)
-                        val bitmap = BitmapFactory.decodeFile(it.path, BitmapFactory.Options().apply {inMutable = true})
+                        val bitmap = BitmapFactory.decodeFile(it.path, BitmapFactory.Options().apply { inMutable = true })
                         if (tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2))) != null) Log.d(TAG, "Yes: $coord1, $coord2")
                         tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2)))?.bmp = bitmap
                     } catch (error: Throwable) {
