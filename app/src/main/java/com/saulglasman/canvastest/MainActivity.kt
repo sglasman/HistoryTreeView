@@ -33,11 +33,11 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     lateinit var zoomView: HistoryTreeView
     lateinit var editButton: ImageView
     lateinit var commitButton: ImageView
-    lateinit var showHideTreeButton: ImageView
     lateinit var colorChangeButton: ImageView
     lateinit var undoButton: ImageView
     lateinit var redoButton: ImageView
     lateinit var treeView: TreeView
+    lateinit var miniTreeView: TreeView
     lateinit var colorSelectDialog: DialogInterface
 
     var filename = "sample"
@@ -54,12 +54,20 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         }
         viewModel = ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java)
         relativeLayout {
+
             zoomView = historyTreeView(viewModel, this@MainActivity) {
                 id = ID_MAINVIEW
             }.lparams {
                 alignParentTop()
                 width = matchParent
                 above(ID_TREEVIEW)
+            }
+            miniTreeView = treeView(viewModel, this@MainActivity, false).lparams {
+                width = dip(100)
+                height = dip(40)
+                Log.d(TAG, "($width, $height)")
+                alignParentTop()
+                alignParentRight()
             }
             relativeLayout {
                 id = ID_BUTTONBAR
@@ -98,17 +106,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                     padding = dip(12)
                     rightMargin = dip(32)
                 }
-                showHideTreeButton = imageView {
-                    id = ID_TREEBUTTON
-                    image = getDrawable(R.drawable.ic_tree)
-                    padding = dip(4)
-                    onClick { viewModel.isTreeShown.value = !viewModel.isTreeShown.value!! }
-                }.lparams {
-                    rightOf(ID_COMMITBUTTON)
-                    padding = dip(12)
-                    rightMargin = dip(32)
-
-                }
                 undoButton = imageView {
                     id = ID_UNDOBUTTON
                     isEnabled = false
@@ -122,7 +119,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         }
                     }
                 }.lparams {
-                    rightOf(ID_TREEBUTTON)
+                    rightOf(ID_COMMITBUTTON)
                     padding = dip(12)
                     rightMargin = dip(32)
                 }
@@ -207,7 +204,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 height = wrapContent
                 alignParentBottom()
             }
-            treeView = treeView(viewModel, this@MainActivity) {
+            treeView = treeView(viewModel, this@MainActivity, true) {
                 id = ID_TREEVIEW
                 visibility = GONE
             }.lparams {
@@ -216,6 +213,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 height = dip(100)
             }
         }
+
 
         //Listeners
 
@@ -238,10 +236,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         viewModel.isTreeShown.observe(this, Observer
         {
             if (it) {
-                showHideTreeButton.backgroundColor = Color.WHITE
                 treeView.visibility = VISIBLE
             } else {
-                showHideTreeButton.backgroundColor = Color.TRANSPARENT
                 treeView.visibility = GONE
             }
         })
@@ -253,7 +249,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                     it.changeColor(zoomView.paint.color)
                 }
                 zoomView.invalidate()
-                treeView.invalidate()
+                invalidateTreeViews()
+                
             }
         })
         viewModel.undoEnabled.observe(this, Observer {
@@ -278,6 +275,11 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         })
     }
 
+    fun invalidateTreeViews() {
+        treeView.invalidate()
+        miniTreeView.invalidate()
+    }
+
     // Interface functions from child views
 
     override fun enableDisableUndoRedoButtons() {
@@ -297,7 +299,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 }
                 viewModel.tree.getDescendantsIncludingSelf(node).forEach {
                     viewModel.tree.nodes.remove(it)
-                    treeView.invalidate()
+                    invalidateTreeViews()
+                    
                 }
             }
             negativeButton("Back") {}
@@ -308,7 +311,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         viewModel.currentNode = node
         viewModel.arrangeBmps()
         zoomView.invalidate()
-        treeView.invalidate()
+        invalidateTreeViews()
+        
         if (!node.isActive) viewModel.isEditing.value = false
         if (node.isActive) viewModel.drawColor.value = node.color
         enableDisableUndoRedoButtons()
@@ -316,8 +320,13 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
     override fun addNewNodeAt(node: BmpTree.TreeNode) {
         viewModel.currentNode = viewModel.tree.addNewNodeAt(node, zoomView.paint.color)
-        treeView.invalidate()
+        invalidateTreeViews()
+        
         enableDisableUndoRedoButtons()
+    }
+
+    override fun showHideTreeView() {
+        viewModel.isTreeShown.value = !viewModel.isTreeShown.value!!
     }
 
     // Filesystem related functions

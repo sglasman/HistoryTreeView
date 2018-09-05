@@ -6,14 +6,12 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.Log
 import android.view.GestureDetector
-import android.view.KeyEvent.ACTION_DOWN
 import android.view.MotionEvent
 import android.widget.ImageView
 import java.lang.Math.abs
 
 
-
-class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listener: TreeViewListener) : ImageView(context) {
+class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listener: TreeViewListener, val isLarge: Boolean) : ImageView(context) {
 
     private val paint = Paint()
     var nodeToCoordMap: Map<BmpTree.TreeNode, Pair<Float, Float>> = mapOf()
@@ -54,6 +52,7 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
     interface TreeViewListener {
         fun deleteNode(node: BmpTree.TreeNode)
         fun changeToNode(node: BmpTree.TreeNode)
+        fun showHideTreeView()
     }
 
     init {
@@ -110,10 +109,20 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
 
         val (xCurrent, yCurrent) = nodeToCoordMap[viewModel.currentNode]!!
         canvas.drawCircle(xCurrent, yCurrent, 8f, circlePaint)
+
+        canvas.drawRect(3f, 3f, width.toFloat() - 3, height.toFloat() - 3, circlePaint)
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        return treeViewGestureDetector.onTouchEvent(event)
+        if (isLarge) {
+        return treeViewGestureDetector.onTouchEvent(event) }
+        else {
+            if (event != null && event.action == MotionEvent.ACTION_UP) {
+                listener.showHideTreeView()
+                return true
+            }
+            return true
+        }
     }
 
     private fun Pair<Float, Float>.isCloseEnoughTo(other: Pair<Float, Float>): Boolean {

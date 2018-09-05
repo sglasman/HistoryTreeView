@@ -23,5 +23,5 @@ fun Bitmap.changeColor(newColor: Int) {
 }
 
 fun ViewManager.historyTreeView(viewModel: HistoryTreeViewModel, listener: HistoryTreeView.HistoryTreeViewListener, init: HistoryTreeView.() -> Unit = {}) = ankoView({ HistoryTreeView(it, viewModel, listener) }, 0, init)
-fun ViewManager.treeView(viewModel: HistoryTreeViewModel, listener: TreeView.TreeViewListener, init: TreeView.() -> Unit = {}) = ankoView({ TreeView(it, viewModel, listener) }, 0, init)
+fun ViewManager.treeView(viewModel: HistoryTreeViewModel, listener: TreeView.TreeViewListener, isLarge: Boolean, init: TreeView.() -> Unit = {}) = ankoView({ TreeView(it, viewModel, listener, isLarge) }, 0, init)
 fun ViewManager.colorSelectButton(color: Int, init: ColorSelectButton.() -> Unit = {}) = ankoView({ ColorSelectButton(it, color) }, 0, init)
