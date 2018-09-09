@@ -10,9 +10,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View.GONE
 import android.view.View.VISIBLE
-import android.widget.Button
 import android.widget.ImageView
-import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -41,7 +39,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     lateinit var colorSelectDialog: DialogInterface
 
     var filename = "sample"
-    val TAG = this::class.java.simpleName
+    val TAG = MainActivity::class.java.simpleName
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +51,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, 2)
         }
         viewModel = ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java)
+
         relativeLayout {
 
             zoomView = historyTreeView(viewModel, this@MainActivity) {
@@ -146,7 +145,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                     onClick {
                         viewModel.arrangeBmps()
                         doAsync {
-                            writeOutCurrentTree()
+                            writeTree()
                         }
                     }
                 }.lparams {
@@ -213,7 +212,12 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 height = dip(100)
             }
         }
-
+        try {
+            viewModel.tree = loadTree()
+            viewModel.currentNode = viewModel.tree.rootNode
+        } catch (_: Exception) {
+            Log.d(TAG, "Caught exception when loading data")
+        }
 
         //Listeners
 
@@ -250,15 +254,14 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 }
                 zoomView.invalidate()
                 invalidateTreeViews()
-                
+
             }
         })
         viewModel.undoEnabled.observe(this, Observer {
             if (it) {
                 undoButton.image = getDrawable(R.drawable.ic_undo_arrow)
                 undoButton.isEnabled = true
-            }
-            else {
+            } else {
                 undoButton.image = getDrawable(R.drawable.ic_undo_arrow_pale)
                 undoButton.isEnabled = false
             }
@@ -267,12 +270,20 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             if (it) {
                 redoButton.image = getDrawable(R.drawable.ic_redo_arrow)
                 redoButton.isEnabled = true
-            }
-            else {
+            } else {
                 redoButton.image = getDrawable(R.drawable.ic_redo_arrow_pale)
                 redoButton.isEnabled = false
             }
         })
+    }
+
+    override fun onDestroy() {
+        try {
+            writeTree()
+        } catch (e: Exception) {
+            Log.d(TAG, "Caught exception while writing tree")
+        }
+        super.onDestroy()
     }
 
     fun invalidateTreeViews() {
@@ -300,7 +311,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 viewModel.tree.getDescendantsIncludingSelf(node).forEach {
                     viewModel.tree.nodes.remove(it)
                     invalidateTreeViews()
-                    
+
                 }
             }
             negativeButton("Back") {}
@@ -312,7 +323,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         viewModel.arrangeBmps()
         zoomView.invalidate()
         invalidateTreeViews()
-        
+
         if (!node.isActive) viewModel.isEditing.value = false
         if (node.isActive) viewModel.drawColor.value = node.color
         enableDisableUndoRedoButtons()
@@ -321,7 +332,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     override fun addNewNodeAt(node: BmpTree.TreeNode) {
         viewModel.currentNode = viewModel.tree.addNewNodeAt(node, zoomView.paint.color)
         invalidateTreeViews()
-        
+
         enableDisableUndoRedoButtons()
     }
 
@@ -331,7 +342,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
     // Filesystem related functions
 
-    private fun writeOutCurrentTree() {
+    @Throws(Exception::class)
+    private fun writeTree() {
         viewModel.tree.nodes.forEach {
             var fos: FileOutputStream? = null
             try {
@@ -352,7 +364,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             dataOos.writeObject(viewModel.tree)
             Log.d(TAG, "Wrote data file")
         } catch (error: Throwable) {
-            Log.e(TAG, "Error writing data file", error)
+            throw error
         } finally {
             dataFos?.close()
             dataOos?.close()
@@ -362,6 +374,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         }")
     }
 
+    @Throws(Exception::class)
     private fun loadTree(): BmpTree {
         val regex = Regex(FILE_REGEX_STRING)
         var dataFis: FileInputStream? = null
@@ -378,7 +391,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             }
             Log.d(TAG, "Successfully loaded data file. Nodes: ${viewModel.tree.nodes.size}.")
         } catch (error: Throwable) {
-            Log.e(TAG, "Error reading data file", error)
+            throw error
         } finally {
             dataFis?.close()
             dataOis?.close()

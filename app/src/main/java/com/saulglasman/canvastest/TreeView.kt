@@ -4,14 +4,19 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.View
 import android.widget.ImageView
+import org.jetbrains.anko.dip
 import java.lang.Math.abs
 
 
 class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listener: TreeViewListener, val isLarge: Boolean) : ImageView(context) {
+
+    val TAG = TreeView::class.java.simpleName
 
     private val paint = Paint()
     var nodeToCoordMap: Map<BmpTree.TreeNode, Pair<Float, Float>> = mapOf()
@@ -77,9 +82,11 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
         }
     }
 
+
+
     fun getCanvasCoords(node: BmpTree.TreeNode): Pair<Float, Float> {
         val layerHeight = viewModel.tree.nodesAtDepth(node.coords.first)
-        Log.d("TAGIT", "Drawing node at (${node.coords.first}, ${node.coords.second})")
+        Log.d(TAG, "Drawing node at (${node.coords.first}, ${node.coords.second})")
         return Pair(width.toFloat() * (node.coords.first + 1) / (viewModel.tree.depth + 1),
                 height.toFloat() * (node.coords.second + 1) / (layerHeight + 1))
     }
