@@ -31,7 +31,7 @@ import java.io.Serializable
 /*val testTree: BmpTree = BmpTree(mutableListOf(mutableListOf<Bitmap?>(null, null), mutableListOf<Bitmap?>(null, null, null)),
         mutableListOf(mutableListOf(Pair(0, 0), Pair(0, 1), Pair(1, 2))))*/
 
-class BmpTree(val nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords = Pair(0, 0), isActive = false, color = Color.BLACK))): Serializable {
+class BmpTree(var nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords = Pair(0, 0), isActive = false, color = Color.BLACK))): Serializable {
 
     /* `nodes` is a list of tree nodes, each of which carries the data of its parent (unless it's the root),
      * its position in the plane and maybe a bitmap.

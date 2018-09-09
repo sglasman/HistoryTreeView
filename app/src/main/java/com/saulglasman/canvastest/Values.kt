@@ -7,7 +7,6 @@ const val touchTolerance: Float = 4f
 const val ID_BUTTONBAR = 101
 const val ID_MAINVIEW = 102
 const val ID_TREEVIEW = 103
-const val ID_UNDOREDOBAR = 104
 const val ID_EDITBUTTON = 105
 const val ID_COMMITBUTTON = 106
 const val ID_TREEBUTTON = 107
@@ -15,6 +14,7 @@ const val ID_COLORCHANGEBUTTON = 108
 const val ID_ALERTSELECTCOLORTEXT = 109
 const val ID_UNDOBUTTON = 110
 const val ID_REDOBUTTON = 111
+const val ID_DELETEBUTTON = 112
 const val STROKE_WIDTH = 12f
 const val TREEVIEW_CLICK_TOLERANCE = 12f
 
