@@ -49,7 +49,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     val TAG = MainActivity::class.java.simpleName
 
 
-
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -266,6 +265,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         }
         reloadTree()
 
+
         //Listeners
 
         viewModel.isEditing.observe(this, Observer
@@ -354,25 +354,32 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         })
     }
 
-    fun reloadTree() {
+    override fun onDestroy() {
         try {
-            viewModel.tree = readTree()
-            viewModel.currentNode = viewModel.tree.rootNode
-        } catch (_: Exception) {
-            Log.d(TAG, "Caught exception when loading data")
-            ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java) // reset view model
+            doAsync {
+                writeTree()
+            }
+        } catch (error: Exception) {
+            Log.e(TAG, "Caught exception while writing tree", error)
+        }
+        super.onDestroy()
+    }
+
+    fun reloadTree() {
+        doAsync {
+            try {
+                val tree = readTree()
+                uiThread {
+                    viewModel.tree = tree
+                    viewModel.currentNode = viewModel.tree.rootNode
+                }
+            } catch (error: Exception) {
+                Log.e(TAG, "Caught exception when loading data", error)
+                ViewModelProviders.of(this@MainActivity).get(HistoryTreeViewModel::class.java) // reset view model
+            }
             zoomView.invalidate()
             invalidateTreeViews()
         }
-    }
-
-    override fun onDestroy() {
-        try {
-            writeTree()
-        } catch (e: Exception) {
-            Log.d(TAG, "Caught exception while writing tree")
-        }
-        super.onDestroy()
     }
 
     fun invalidateTreeViews() {
@@ -380,7 +387,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         miniTreeView.invalidate()
     }
 
-    // Interface functions from child views
+// Interface functions from child views
 
     override fun enableDisableUndoRedoButtons() {
         viewModel.isRedoEnabled.value = viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size
@@ -431,7 +438,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         viewModel.isTreeShown.value = !viewModel.isTreeShown.value!!
     }
 
-    // Filesystem-related functions
+// Filesystem-related functions
 
     fun getPageDir(fileData: FileData): File {
         val pdfDir = File(filesDir, "${fileData.fileHash}/")
