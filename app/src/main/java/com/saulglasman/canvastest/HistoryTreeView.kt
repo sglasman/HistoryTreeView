@@ -18,6 +18,8 @@ import java.lang.Math.*
 
 @SuppressLint("ViewConstructor")
 class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val listener: HistoryTreeViewListener) : ImageView(context) {
+
+    val TAG = HistoryTreeView::class.java.simpleName
     val paint = Paint()
     val path = Path()
     private val scaleGestureDetector: ScaleGestureDetector = ScaleGestureDetector(context, ZoomListener())
@@ -50,7 +52,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-
+        Log.d(TAG, "Size changed: $w, $h from $oldw, $oldh")
         if (viewModel.backBitmap == null) {
             viewModel.backBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
             val renderer = PdfRenderer(ParcelFileDescriptor.open(
@@ -59,8 +61,6 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
             renderer.openPage(0).render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
             viewModel.currentNode.bmp = viewModel.backBitmap!!
         }
-        /*      pathCanvas = Canvas(viewModel.frontBitmap)
-              pathCanvas.drawColor(Color.TRANSPARENT)*/
     }
 
     override fun onDraw(canvas: Canvas?) {

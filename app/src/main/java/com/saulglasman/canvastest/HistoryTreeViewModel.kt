@@ -15,7 +15,8 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
                            var isUndoEnabled: MutableLiveData<Boolean> = MutableLiveData(),
                            var isRedoEnabled: MutableLiveData<Boolean> = MutableLiveData(),
                            var isDeleteButtonEnabled: MutableLiveData<Boolean> = MutableLiveData(),
-                           var isCommitButtonEnabled: MutableLiveData<Boolean> = MutableLiveData()) : ViewModel() {
+                           var isCommitButtonEnabled: MutableLiveData<Boolean> = MutableLiveData(),
+                           var isSecondaryButtonBarShown: MutableLiveData<Boolean> = MutableLiveData()) : ViewModel() {
 
     fun reset() {
         arrangeBmps()
@@ -37,6 +38,7 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
         isRedoEnabled.value = false
         isDeleteButtonEnabled.value = false
         isCommitButtonEnabled.value = false
+        isSecondaryButtonBarShown.value = false
         drawColor.value = Color.BLACK
     }
 }

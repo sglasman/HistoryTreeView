@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.widget.ImageView
+import android.widget.RelativeLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -35,7 +36,9 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     lateinit var colorChangeButton: ImageView
     lateinit var undoButton: ImageView
     lateinit var redoButton: ImageView
+    lateinit var moreButton: ImageView
     lateinit var deleteButton: ImageView
+    lateinit var secondaryButtonBar: RelativeLayout
     lateinit var treeView: TreeView
     lateinit var miniTreeView: TreeView
     lateinit var colorSelectDialog: DialogInterface
@@ -44,6 +47,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "sample.pdf"),
             0)
     val TAG = MainActivity::class.java.simpleName
+
+
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -143,26 +148,20 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                     padding = dip(12)
                     rightMargin = dip(32)
                 }
-                deleteButton = imageView {
-                    id = ID_DELETEBUTTON
-                    image = getDrawable(R.drawable.ic_close_pale)
-                    isEnabled = false
+                moreButton = imageView {
+                    id = ID_MOREBUTTON
+                    image = getDrawable(R.drawable.ic_ellipsis_h)
                     padding = dip(4)
                     onClick {
-                        alert("Delete everything except base PDF? This cannot be undone.") {
-                            positiveButton("Proceed") {
-                                changeToNode(viewModel.tree.rootNode)
-                                viewModel.tree.nodes = mutableListOf(viewModel.tree.rootNode)
-                                viewModel.isDeleteButtonEnabled.value = false
-                            }
-                            negativeButton("Back") {}
-                        }.show()
+                        viewModel.isSecondaryButtonBarShown.value = !viewModel.isSecondaryButtonBarShown.value!!
                     }
                 }.lparams {
                     rightOf(ID_REDOBUTTON)
                     padding = dip(12)
                     rightMargin = dip(32)
                 }
+
+
 /*                imageView {
                     image = getDrawable(R.drawable.ic_save)
                     padding = dip(4)
@@ -227,11 +226,40 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 height = wrapContent
                 alignParentBottom()
             }
+            secondaryButtonBar = relativeLayout {
+                id = ID_SECONDARYBUTTONBAR
+                backgroundColor = Color.LTGRAY
+                visibility = GONE
+                deleteButton = imageView {
+                    id = ID_DELETEBUTTON
+                    image = getDrawable(R.drawable.ic_recycle_bin_pale)
+                    isEnabled = false
+                    padding = dip(4)
+                    onClick {
+                        alert("Delete everything except base PDF? This cannot be undone.") {
+                            positiveButton("Proceed") {
+                                changeToNode(viewModel.tree.rootNode)
+                                viewModel.tree.nodes = mutableListOf(viewModel.tree.rootNode)
+                                viewModel.isDeleteButtonEnabled.value = false
+                            }
+                            negativeButton("Back") {}
+                        }.show()
+                    }
+                }.lparams {
+                    alignParentLeft()
+                    padding = dip(12)
+                    rightMargin = dip(32)
+                }
+            }.lparams {
+                above(ID_BUTTONBAR)
+                width = matchParent
+                height = wrapContent
+            }
             treeView = treeView(viewModel, this@MainActivity, true) {
                 id = ID_TREEVIEW
                 visibility = GONE
             }.lparams {
-                above(ID_BUTTONBAR)
+                above(ID_SECONDARYBUTTONBAR)
                 width = matchParent
                 height = dip(100)
             }
@@ -248,12 +276,15 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 undoButton.visibility = VISIBLE
                 redoButton.visibility = VISIBLE
                 deleteButton.visibility = GONE
+                moreButton.visibility = GONE
+                viewModel.isSecondaryButtonBarShown.value = false
             } else {
                 editButton.backgroundColor = Color.TRANSPARENT
                 zoomView.mode = CanvasMode.MODE_NAV
                 undoButton.visibility = GONE
                 redoButton.visibility = GONE
                 deleteButton.visibility = VISIBLE
+                moreButton.visibility = VISIBLE
             }
         })
         viewModel.isTreeShown.observe(this, Observer
@@ -296,10 +327,10 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         })
         viewModel.isDeleteButtonEnabled.observe(this, Observer {
             if (it) {
-                deleteButton.image = getDrawable(R.drawable.ic_close)
+                deleteButton.image = getDrawable(R.drawable.ic_recycle_bin)
                 deleteButton.isEnabled = true
             } else {
-                deleteButton.image = getDrawable(R.drawable.ic_close_pale)
+                deleteButton.image = getDrawable(R.drawable.ic_recycle_bin_pale)
                 deleteButton.isEnabled = false
             }
         })
@@ -312,7 +343,15 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 commitButton.isEnabled = false
             }
         })
-
+        viewModel.isSecondaryButtonBarShown.observe(this, Observer {
+            if (it) {
+                moreButton.backgroundColor = Color.WHITE
+                secondaryButtonBar.visibility = VISIBLE
+            } else {
+                moreButton.backgroundColor = Color.TRANSPARENT
+                secondaryButtonBar.visibility = GONE
+            }
+        })
     }
 
     fun reloadTree() {
@@ -392,7 +431,15 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         viewModel.isTreeShown.value = !viewModel.isTreeShown.value!!
     }
 
-    // Filesystem related functions
+    // Filesystem-related functions
+
+    fun getPageDir(fileData: FileData): File {
+        val pdfDir = File(filesDir, "${fileData.fileHash}/")
+        if (!pdfDir.exists()) pdfDir.mkdir()
+        val pageDir = File(pdfDir, "${fileData.page}/")
+        if (!pageDir.exists()) pageDir.mkdir()
+        return pageDir
+    }
 
     @Throws(Exception::class)
     private fun writeTree() {
@@ -425,14 +472,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         Log.d(TAG, "Files in data directory: ${
         pageDir.listFiles().map { it.name }
         }")
-    }
-
-    fun getPageDir(fileData: FileData): File {
-        val pdfDir = File(filesDir, "${fileData.fileHash}/")
-        if (!pdfDir.exists()) pdfDir.mkdir()
-        val pageDir = File(pdfDir, "${fileData.page}/")
-        if (!pageDir.exists()) pageDir.mkdir()
-        return pageDir
     }
 
     @Throws(Exception::class)
