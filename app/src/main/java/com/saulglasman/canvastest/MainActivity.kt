@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.View.GONE
 import android.view.View.VISIBLE
@@ -22,7 +23,6 @@ import org.jetbrains.anko.*
 import org.jetbrains.anko.sdk25.coroutines.onClick
 import java.io.*
 import java.lang.Integer.parseInt
-import java.lang.Thread.sleep
 
 @Suppress("EXPERIMENTAL_FEATURE_WARNING", "NestedLambdaShadowedImplicitParameter")
 class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTreeView.HistoryTreeViewListener {
@@ -40,7 +40,9 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     lateinit var miniTreeView: TreeView
     lateinit var colorSelectDialog: DialogInterface
 
-    var filename = "sample"
+    var fileData: FileData = FileData(
+            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "sample.pdf"),
+            0)
     val TAG = MainActivity::class.java.simpleName
 
     @SuppressLint("SetTextI18n")
@@ -234,12 +236,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 height = dip(100)
             }
         }
-        try {
-            viewModel.tree = loadTree()
-            viewModel.currentNode = viewModel.tree.rootNode
-        } catch (_: Exception) {
-            Log.d(TAG, "Caught exception when loading data")
-        }
+        reloadTree()
 
         //Listeners
 
@@ -318,6 +315,18 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
     }
 
+    fun reloadTree() {
+        try {
+            viewModel.tree = readTree()
+            viewModel.currentNode = viewModel.tree.rootNode
+        } catch (_: Exception) {
+            Log.d(TAG, "Caught exception when loading data")
+            ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java) // reset view model
+            zoomView.invalidate()
+            invalidateTreeViews()
+        }
+    }
+
     override fun onDestroy() {
         try {
             writeTree()
@@ -387,10 +396,11 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
     @Throws(Exception::class)
     private fun writeTree() {
+        val pageDir = getPageDir(fileData)
         viewModel.tree.nodes.forEach {
             var fos: FileOutputStream? = null
             try {
-                fos = FileOutputStream(File(filesDir, "${filename}_${it.coords.first}_${it.coords.second}"))
+                fos = FileOutputStream(File(pageDir, "${it.coords.first}_${it.coords.second}"))
                 it.bmp?.compress(Bitmap.CompressFormat.PNG, 100, fos)
                 Log.d(TAG, "Wrote bitmap (${it.coords.first}, ${it.coords.second})")
             } catch (error: Throwable) {
@@ -402,7 +412,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         var dataFos: FileOutputStream? = null
         var dataOos: ObjectOutputStream? = null
         try {
-            dataFos = FileOutputStream(File(filesDir, "${filename}_data"))
+            dataFos = FileOutputStream(File(pageDir, "data"))
             dataOos = ObjectOutputStream(dataFos)
             dataOos.writeObject(viewModel.tree)
             Log.d(TAG, "Wrote data file")
@@ -413,18 +423,27 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             dataOos?.close()
         }
         Log.d(TAG, "Files in data directory: ${
-        filesDir.listFiles().map { it.name }
+        pageDir.listFiles().map { it.name }
         }")
     }
 
+    fun getPageDir(fileData: FileData): File {
+        val pdfDir = File(filesDir, "${fileData.fileHash}/")
+        if (!pdfDir.exists()) pdfDir.mkdir()
+        val pageDir = File(pdfDir, "${fileData.page}/")
+        if (!pageDir.exists()) pageDir.mkdir()
+        return pageDir
+    }
+
     @Throws(Exception::class)
-    private fun loadTree(): BmpTree {
+    private fun readTree(): BmpTree {
         val regex = Regex(FILE_REGEX_STRING)
         var dataFis: FileInputStream? = null
         var dataOis: ObjectInputStream? = null
         var tree = BmpTree()
+        val pageDir = getPageDir(fileData)
         try {
-            dataFis = FileInputStream(File(filesDir, "${filename}_data"))
+            dataFis = FileInputStream(File(pageDir, "data"))
             dataOis = ObjectInputStream(dataFis)
             tree = dataOis.readObject() as BmpTree
             tree.nodes.forEach {
@@ -432,29 +451,27 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 it.stackPointer = 0
                 it.isActive = false
             }
-            Log.d(TAG, "Successfully loaded data file. Nodes: ${viewModel.tree.nodes.size}.")
+            Log.d(TAG, "Successfully loaded data file. Nodes: ${tree.nodes.size}.")
         } catch (error: Throwable) {
             throw error
         } finally {
             dataFis?.close()
             dataOis?.close()
         }
-        filesDir.listFiles().forEach {
+        pageDir.listFiles().forEach {
             var fis: FileInputStream? = null
             if (regex.matchEntire(it.name) != null) {
-                val (name, coord1, coord2) = regex.matchEntire(it.name)!!.destructured
-                Log.d(TAG, "File found: $name, $coord1, $coord2")
-                if (name == filename) {
-                    try {
-                        fis = FileInputStream(it)
-                        val bitmap = BitmapFactory.decodeFile(it.path, BitmapFactory.Options().apply { inMutable = true })
-                        if (tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2))) != null) Log.d(TAG, "Yes: $coord1, $coord2")
-                        tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2)))?.bmp = bitmap
-                    } catch (error: Throwable) {
-                        Log.e(TAG, "Error reading file ${it.name}", error)
-                    } finally {
-                        fis?.close()
-                    }
+                val (coord1, coord2) = regex.matchEntire(it.name)!!.destructured
+                Log.d(TAG, "File found: $coord1, $coord2")
+                try {
+                    fis = FileInputStream(it)
+                    val bitmap = BitmapFactory.decodeFile(it.path, BitmapFactory.Options().apply { inMutable = true })
+                    if (tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2))) != null) Log.d(TAG, "Yes: $coord1, $coord2")
+                    tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2)))?.bmp = bitmap
+                } catch (error: Throwable) {
+                    throw error
+                } finally {
+                    fis?.close()
                 }
             }
         }

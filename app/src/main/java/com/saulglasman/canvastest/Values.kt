@@ -18,7 +18,7 @@ const val ID_DELETEBUTTON = 112
 const val STROKE_WIDTH = 12f
 const val TREEVIEW_CLICK_TOLERANCE = 12f
 
-const val FILE_REGEX_STRING = "(.*)_(\\d+)_(\\d+)"
+const val FILE_REGEX_STRING = "(\\d+)_(\\d+)"
 
 val COLORS: List<Int> = listOf(Color.BLACK, Color.RED, Color.parseColor("#009874") /*emerald green*/, Color.BLUE)
 
