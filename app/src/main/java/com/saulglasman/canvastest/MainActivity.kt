@@ -87,8 +87,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 }
                 commitButton = imageView {
                     id = ID_COMMITBUTTON
-                    visibility = GONE
-                    image = getDrawable(R.drawable.ic_check_mark)
+                    visibility = VISIBLE
+                    image = getDrawable(R.drawable.ic_check_mark_pale)
                     padding = dip(4)
                     onClick {
                         viewModel.currentNode.bmp = overlayBmpList(viewModel.currentNode.undoRedoStack.take(viewModel.currentNode.stackPointer)) //necessary in case there have been some undos
@@ -97,8 +97,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         } else {
                             viewModel.currentNode.markInactive()
                             viewModel.arrangeBmps()
-                            viewModel.isCommitted.value = true
                             viewModel.isEditing.value = false
+                            viewModel.isCommitButtonEnabled.value = false
                             zoomView.resetUndoRedoStack()
                         }
                     }
@@ -150,9 +150,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         alert("Delete everything except base PDF? This cannot be undone.") {
                             positiveButton("Proceed") {
                                 changeToNode(viewModel.tree.rootNode)
-                         /*       viewModel.tree.nodes.forEach {
-                                    if (it != viewModel.tree.rootNode) viewModel.tree.nodes.remove(it)
-                                }*/
                                 viewModel.tree.nodes = mutableListOf(viewModel.tree.rootNode)
                                 viewModel.isDeleteButtonEnabled.value = false
                             }
@@ -253,14 +250,12 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 zoomView.mode = CanvasMode.MODE_DRAW
                 undoButton.visibility = VISIBLE
                 redoButton.visibility = VISIBLE
-                commitButton.visibility = VISIBLE
                 deleteButton.visibility = GONE
             } else {
                 editButton.backgroundColor = Color.TRANSPARENT
                 zoomView.mode = CanvasMode.MODE_NAV
                 undoButton.visibility = GONE
                 redoButton.visibility = GONE
-                commitButton.visibility = GONE
                 deleteButton.visibility = VISIBLE
             }
         })
@@ -306,12 +301,21 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             if (it) {
                 deleteButton.image = getDrawable(R.drawable.ic_close)
                 deleteButton.isEnabled = true
-            }
-            else {
+            } else {
                 deleteButton.image = getDrawable(R.drawable.ic_close_pale)
                 deleteButton.isEnabled = false
             }
         })
+        viewModel.isCommitButtonEnabled.observe(this, Observer {
+            if (it) {
+                commitButton.image = getDrawable(R.drawable.ic_check_mark)
+                commitButton.isEnabled = true
+            } else {
+                commitButton.image = getDrawable(R.drawable.ic_check_mark_pale)
+                commitButton.isEnabled = false
+            }
+        })
+
     }
 
     override fun onDestroy() {
@@ -341,22 +345,18 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         }
         alert("Delete this node and all its descendants? This cannot be undone.") {
             positiveButton("Proceed") {
-                deleteNodeConfirmed(node)
+                if (viewModel.tree.getLineage(viewModel.currentNode).contains(node)) { // would the current node be deleted?
+                    changeToNode(node.parent!!) // if so, move it back to the parent of the node to be deleted
+                    viewModel.reset()
+                }
+                viewModel.tree.getDescendantsIncludingSelf(node).forEach {
+                    viewModel.tree.nodes.remove(it)
+                    invalidateTreeViews()
+                }
+                if (viewModel.tree.nodes.size == 1) viewModel.isDeleteButtonEnabled.value = false
             }
             negativeButton("Back") {}
         }.show()
-    }
-
-    fun deleteNodeConfirmed(node: BmpTree.TreeNode) {
-        if (viewModel.tree.getLineage(viewModel.currentNode).contains(node)) { // would the current node be deleted?
-            changeToNode(node.parent!!) // if so, move it back to the parent of the node to be deleted
-            viewModel.reset()
-        }
-        viewModel.tree.getDescendantsIncludingSelf(node).forEach {
-            viewModel.tree.nodes.remove(it)
-            invalidateTreeViews()
-        }
-        if (viewModel.tree.nodes.size == 1) viewModel.isDeleteButtonEnabled.value = false
     }
 
     override fun changeToNode(node: BmpTree.TreeNode) {
@@ -368,6 +368,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         if (!node.isActive) viewModel.isEditing.value = false
         if (node.isActive) viewModel.drawColor.value = node.color
         enableDisableUndoRedoButtons()
+        viewModel.isCommitButtonEnabled.value = viewModel.currentNode.isActive
     }
 
     override fun addNewNodeAt(node: BmpTree.TreeNode) {
@@ -375,6 +376,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         invalidateTreeViews()
         enableDisableUndoRedoButtons()
         viewModel.isDeleteButtonEnabled.value = true
+        viewModel.isCommitButtonEnabled.value = true
     }
 
     override fun showHideTreeView() {
