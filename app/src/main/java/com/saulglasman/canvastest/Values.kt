@@ -18,7 +18,7 @@ const val ID_DELETEBUTTON = 112
 const val ID_MOREBUTTON = 113
 const val ID_SECONDARYBUTTONBAR = 114
 const val STROKE_WIDTH = 12f
-const val TREEVIEW_CLICK_TOLERANCE = 12f
+const val TREEVIEW_CLICK_TOLERANCE = 24f
 
 const val FILE_REGEX_STRING = "(\\d+)_(\\d+)"
 

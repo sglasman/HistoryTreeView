@@ -44,7 +44,7 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
             }
         }
 
-        override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
+        override fun onSingleTapUp(e: MotionEvent?): Boolean {
             val possibleNode = findCloseNode(e)
             if (possibleNode != null) {
                 listener.changeToNode(possibleNode)
@@ -133,6 +133,6 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
     }
 
     private fun Pair<Float, Float>.isCloseEnoughTo(other: Pair<Float, Float>): Boolean {
-        return (abs(this.first - other.first) <= TREEVIEW_CLICK_TOLERANCE && abs(this.second - other.second) <= TREEVIEW_CLICK_TOLERANCE) //use l^1 distance, why not
+        return (abs(this.first - other.first) <= dip(TREEVIEW_CLICK_TOLERANCE) && abs(this.second - other.second) <= TREEVIEW_CLICK_TOLERANCE) //use l^1 distance, why not
     }
 }
