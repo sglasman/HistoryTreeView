@@ -9,6 +9,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
+import android.view.View
 import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.widget.ImageView
@@ -38,16 +39,15 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     lateinit var redoButton: ImageView
     lateinit var moreButton: ImageView
     lateinit var deleteButton: ImageView
+    lateinit var pgUpButton: ImageView
+    lateinit var pgDownButton: ImageView
     lateinit var secondaryButtonBar: RelativeLayout
     lateinit var treeView: TreeView
     lateinit var miniTreeView: TreeView
     lateinit var colorSelectDialog: DialogInterface
 
-    var fileData: FileData = FileData(
-            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "sample.pdf"),
-            0)
-    val TAG = MainActivity::class.java.simpleName
 
+    val TAG = MainActivity::class.java.simpleName
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, 2)
         }
         viewModel = ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java)
+
 
         relativeLayout {
 
@@ -122,7 +123,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         if (viewModel.currentNode.stackPointer > 0) {
                             viewModel.currentNode.stackPointer--
                             zoomView.invalidate()
-                            enableDisableUndoRedoButtons()
+                            viewModel.enableDisableUndoRedoButtons()
                         }
                     }
                 }.lparams {
@@ -139,7 +140,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         if (viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size) {
                             viewModel.currentNode.stackPointer++
                             zoomView.invalidate()
-                            enableDisableUndoRedoButtons()
+                            viewModel.enableDisableUndoRedoButtons()
                         }
                     }
                 }.lparams {
@@ -159,22 +160,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                     padding = dip(12)
                     rightMargin = dip(32)
                 }
-
-
-/*                imageView {
-                    image = getDrawable(R.drawable.ic_save)
-                    padding = dip(4)
-                    onClick {
-                        viewModel.arrangeBmps()
-                        doAsync {
-                            writeTree()
-                        }
-                    }
-                }.lparams {
-                    rightOf(ID_TREEBUTTON)
-                    padding = dip(12)
-                    rightMargin = dip(32)
-                }*/
                 colorChangeButton = imageView {
                     id = ID_COLORCHANGEBUTTON
                     image = getDrawable(R.drawable.square)
@@ -249,6 +234,47 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                     padding = dip(12)
                     rightMargin = dip(32)
                 }
+                pgUpButton = imageView {
+                    id = ID_PGUPBUTTON
+                    image = getDrawable(R.drawable.ic_line_angle_up_pale)
+                    isEnabled = false
+                    padding = dip(4)
+                    onClick {
+                        saveTreeSync()
+                        FileData.page--
+                        loadTreeSync()
+                        viewModel.enableDisablePgButtons()
+                        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+                        viewModel.backBitmap = viewModel.currentNode.bmp
+                    }
+                }.lparams {
+                    rightOf(ID_DELETEBUTTON)
+                    padding = dip(12)
+                    rightMargin = dip(32)
+                }
+                pgDownButton = imageView {
+                    id = ID_PGDOWNBUTTON
+                    image = getDrawable(R.drawable.ic_line_angle_down_pale)
+                    isEnabled = false
+                    padding = dip(4)
+                    onClick {
+                        saveTreeSync()
+                        FileData.page++
+                        loadTreeSync()
+                        viewModel.enableDisablePgButtons()
+                        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+                        viewModel.backBitmap = viewModel.currentNode.bmp
+                    }
+                }.lparams {
+                    rightOf(ID_PGUPBUTTON)
+                    padding = dip(12)
+                    rightMargin = dip(32)
+                }
+/*                button("Debug") {
+                    onClick {
+                        myDebug()
+                    }
+                }.lparams { rightOf(ID_PGDOWNBUTTON) }*/
             }.lparams {
                 above(ID_BUTTONBAR)
                 width = matchParent
@@ -263,8 +289,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 height = dip(100)
             }
         }
-        reloadTree()
-
+        loadTreeAsync()
 
         //Listeners
 
@@ -352,9 +377,36 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 secondaryButtonBar.visibility = GONE
             }
         })
+        viewModel.isPgDownButtonEnabled.observe(this, Observer {
+            if (it) {
+                pgDownButton.image = getDrawable(R.drawable.ic_line_angle_down)
+                pgDownButton.isEnabled = true
+            } else {
+                pgDownButton.image = getDrawable(R.drawable.ic_line_angle_down_pale)
+                pgDownButton.isEnabled = false
+            }
+        })
+        viewModel.isPgUpButtonEnabled.observe(this, Observer {
+            if (it) {
+                pgUpButton.image = getDrawable(R.drawable.ic_line_angle_up)
+                pgUpButton.isEnabled = true
+            } else {
+                pgUpButton.image = getDrawable(R.drawable.ic_line_angle_up_pale)
+                pgUpButton.isEnabled = false
+            }
+        })
+    }
+
+    private fun myDebug() {
+        Log.d(TAG, "Debug")
     }
 
     override fun onDestroy() {
+        saveTreeAsync()
+        super.onDestroy()
+    }
+
+    fun saveTreeAsync() {
         try {
             doAsync {
                 writeTree()
@@ -362,10 +414,17 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         } catch (error: Exception) {
             Log.e(TAG, "Caught exception while writing tree", error)
         }
-        super.onDestroy()
     }
 
-    fun reloadTree() {
+    fun saveTreeSync() {
+        try {
+            writeTree()
+        } catch (error: Exception) {
+            Log.e(TAG, "Caught exception while writing tree", error)
+        }
+    }
+
+    fun loadTreeAsync() {
         doAsync {
             try {
                 val tree = readTree()
@@ -375,11 +434,26 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 }
             } catch (error: Exception) {
                 Log.e(TAG, "Caught exception when loading data", error)
-                ViewModelProviders.of(this@MainActivity).get(HistoryTreeViewModel::class.java) // reset view model
+                viewModel.reset()
             }
+            zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
             zoomView.invalidate()
             invalidateTreeViews()
         }
+    }
+
+    fun loadTreeSync() {
+        try {
+            val tree = readTree()
+            viewModel.tree = tree
+            viewModel.currentNode = viewModel.tree.rootNode
+        } catch (error: Exception) {
+            Log.e(TAG, "Caught exception when loading data", error)
+            viewModel.reset()
+        }
+        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+        zoomView.invalidate()
+        invalidateTreeViews()
     }
 
     fun invalidateTreeViews() {
@@ -389,11 +463,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
 // Interface functions from child views
 
-    override fun enableDisableUndoRedoButtons() {
-        viewModel.isRedoEnabled.value = viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size
-        viewModel.isUndoEnabled.value = viewModel.currentNode.stackPointer > 0
-    }
-
     override fun deleteNode(node: BmpTree.TreeNode) {
         if (node == viewModel.tree.rootNode) {
             return
@@ -402,7 +471,8 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             positiveButton("Proceed") {
                 if (viewModel.tree.getLineage(viewModel.currentNode).contains(node)) { // would the current node be deleted?
                     changeToNode(node.parent!!) // if so, move it back to the parent of the node to be deleted
-                    viewModel.reset()
+                    viewModel.arrangeBmps()
+                    viewModel.isEditing.value = false
                 }
                 viewModel.tree.getDescendantsIncludingSelf(node).forEach {
                     viewModel.tree.nodes.remove(it)
@@ -422,14 +492,14 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
         if (!node.isActive) viewModel.isEditing.value = false
         if (node.isActive) viewModel.drawColor.value = node.color
-        enableDisableUndoRedoButtons()
+        viewModel.enableDisableUndoRedoButtons()
         viewModel.isCommitButtonEnabled.value = viewModel.currentNode.isActive
     }
 
     override fun addNewNodeAt(node: BmpTree.TreeNode) {
         viewModel.currentNode = viewModel.tree.addNewNodeAt(node, zoomView.paint.color)
         invalidateTreeViews()
-        enableDisableUndoRedoButtons()
+        viewModel.enableDisableUndoRedoButtons()
         viewModel.isDeleteButtonEnabled.value = true
         viewModel.isCommitButtonEnabled.value = true
     }
@@ -450,7 +520,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
 
     @Throws(Exception::class)
     private fun writeTree() {
-        val pageDir = getPageDir(fileData)
+        val pageDir = getPageDir(FileData)
         viewModel.tree.nodes.forEach {
             var fos: FileOutputStream? = null
             try {
@@ -487,7 +557,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         var dataFis: FileInputStream? = null
         var dataOis: ObjectInputStream? = null
         var tree = BmpTree()
-        val pageDir = getPageDir(fileData)
+        val pageDir = getPageDir(FileData)
         try {
             dataFis = FileInputStream(File(pageDir, "data"))
             dataOis = ObjectInputStream(dataFis)
@@ -505,20 +575,13 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             dataOis?.close()
         }
         pageDir.listFiles().forEach {
-            var fis: FileInputStream? = null
             if (regex.matchEntire(it.name) != null) {
                 val (coord1, coord2) = regex.matchEntire(it.name)!!.destructured
                 Log.d(TAG, "File found: $coord1, $coord2")
-                try {
-                    fis = FileInputStream(it)
-                    val bitmap = BitmapFactory.decodeFile(it.path, BitmapFactory.Options().apply { inMutable = true })
-                    if (tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2))) != null) Log.d(TAG, "Yes: $coord1, $coord2")
-                    tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2)))?.bmp = bitmap
-                } catch (error: Throwable) {
-                    throw error
-                } finally {
-                    fis?.close()
-                }
+                val bitmap = BitmapFactory.decodeFile(it.path, BitmapFactory.Options().apply { inMutable = true })
+                if (tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2))) != null) Log.d(TAG, "Yes: $coord1, $coord2")
+                tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2)))?.bmp = bitmap
+
             }
         }
         return tree

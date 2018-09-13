@@ -8,6 +8,7 @@ import android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
 import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.os.ParcelFileDescriptor.MODE_READ_ONLY
+import android.os.ParcelFileDescriptor.open
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -22,6 +23,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
     val TAG = HistoryTreeView::class.java.simpleName
     val paint = Paint()
     val path = Path()
+    val renderer = PdfRenderer(open(FileData.file, MODE_READ_ONLY))
     private val scaleGestureDetector: ScaleGestureDetector = ScaleGestureDetector(context, ZoomListener())
     private val gestureDetector: GestureDetector = GestureDetector(context, ScrollListener())
     lateinit var pathCanvas: Canvas
@@ -37,28 +39,26 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
             strokeWidth = STROKE_WIDTH
             strokeCap = Paint.Cap.ROUND
         }
-/*        PDFBoxResourceLoader.init(context);
-        val pdfFile = PDDocument.load(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "sample.pdf"))
-        val renderer = PDFRenderer(pdfFile)
-        val page = pdfFile.getPage(0)
-        pdfBitmap = renderer.renderImageWithDPI(0, DisplayMetrics.DENSITY_DEFAULT.toFloat(), Bitmap.Config.ARGB_8888)*/
+        FileData.numPages = renderer.pageCount
+        viewModel.enableDisablePgButtons()
     }
 
     interface HistoryTreeViewListener {
         fun addNewNodeAt(node: BmpTree.TreeNode)
-        fun enableDisableUndoRedoButtons()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         Log.d(TAG, "Size changed: $w, $h from $oldw, $oldh")
+        initBackBitmapIfNull(w, h)
+    }
+
+    fun initBackBitmapIfNull(width: Int, h: Int) {
         if (viewModel.backBitmap == null) {
-            viewModel.backBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-            val renderer = PdfRenderer(ParcelFileDescriptor.open(
-                    File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                            "sample.pdf"), MODE_READ_ONLY))
-            renderer.openPage(0).render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
+            viewModel.backBitmap = Bitmap.createBitmap(width, h, Bitmap.Config.ARGB_8888)
+            val renderedPage = renderer.openPage(FileData.page)
+            renderedPage.render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
+            renderedPage.close()
             viewModel.currentNode.bmp = viewModel.backBitmap!!
         }
     }
@@ -136,7 +136,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
             viewModel.currentNode.undoRedoStack.add(Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888))
             pathCanvas = Canvas(viewModel.currentNode.undoRedoStack[viewModel.currentNode.stackPointer])
             viewModel.currentNode.stackPointer++
-            listener.enableDisableUndoRedoButtons()
+            viewModel.enableDisableUndoRedoButtons()
 
             pathCanvas.drawPoint(transformedX, transformedY, paint)
 
