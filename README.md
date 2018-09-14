@@ -9,10 +9,6 @@ This is an activity supporting a custom View which can be zoomed, scrolled and d
 * To delete a branch, long press on the node
 * You can select colors for individual branches, and these will appear as colors of edges of the history tree
 * All data will automatically save and load when the app is started or exited
-
-To do:
-
-* Clean up the UI further
-* Document selector
+* You can select PDF files from local storage
 
 Incorporates code inspired by https://github.com/Miserlou/Android-SDK-Samples/blob/master/ApiDemos/src/com/example/android/apis/graphics/FingerPaint.java.
