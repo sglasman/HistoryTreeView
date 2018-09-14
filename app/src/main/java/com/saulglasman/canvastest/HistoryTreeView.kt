@@ -7,8 +7,6 @@ import android.graphics.pdf.PdfRenderer
 import android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
 import android.os.Environment
 import android.os.ParcelFileDescriptor
-import android.os.ParcelFileDescriptor.MODE_READ_ONLY
-import android.os.ParcelFileDescriptor.open
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -23,7 +21,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
     val TAG = HistoryTreeView::class.java.simpleName
     val paint = Paint()
     val path = Path()
-    val renderer = PdfRenderer(open(FileData.file, MODE_READ_ONLY))
+    var renderer = PdfRenderer(ParcelFileDescriptor.open(FileData.file, ParcelFileDescriptor.MODE_READ_ONLY))
     private val scaleGestureDetector: ScaleGestureDetector = ScaleGestureDetector(context, ZoomListener())
     private val gestureDetector: GestureDetector = GestureDetector(context, ScrollListener())
     lateinit var pathCanvas: Canvas
@@ -45,6 +43,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
 
     interface HistoryTreeViewListener {
         fun addNewNodeAt(node: BmpTree.TreeNode)
+
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -53,9 +52,10 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
         initBackBitmapIfNull(w, h)
     }
 
-    fun initBackBitmapIfNull(width: Int, h: Int) {
+    fun initBackBitmapIfNull(width: Int, height: Int) {
         if (viewModel.backBitmap == null) {
-            viewModel.backBitmap = Bitmap.createBitmap(width, h, Bitmap.Config.ARGB_8888)
+            viewModel.backBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            renderer = PdfRenderer(ParcelFileDescriptor.open(FileData.file, ParcelFileDescriptor.MODE_READ_ONLY))
             val renderedPage = renderer.openPage(FileData.page)
             renderedPage.render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
             renderedPage.close()

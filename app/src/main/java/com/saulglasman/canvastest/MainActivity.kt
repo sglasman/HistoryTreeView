@@ -1,15 +1,15 @@
 package com.saulglasman.canvastest
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.DialogInterface
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
-import android.view.View
 import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.widget.ImageView
@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     lateinit var deleteButton: ImageView
     lateinit var pgUpButton: ImageView
     lateinit var pgDownButton: ImageView
+    lateinit var openFileButton: ImageView
     lateinit var secondaryButtonBar: RelativeLayout
     lateinit var treeView: TreeView
     lateinit var miniTreeView: TreeView
@@ -270,6 +271,21 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                     padding = dip(12)
                     rightMargin = dip(32)
                 }
+                openFileButton = imageView {
+                    id = ID_OPENFILEBUTTON
+                    image = getDrawable(R.drawable.ic_pdf_file)
+                    padding = dip(4)
+                    onClick {
+                        val openFileIntent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                                .addCategory(Intent.CATEGORY_OPENABLE)
+                                .setType("application/pdf")
+                        startActivityForResult(openFileIntent, REQUEST_CODE_OPENFILE)
+                    }
+                }.lparams {
+                    rightOf(ID_PGDOWNBUTTON)
+                    padding = dip(12)
+                    rightMargin = dip(32)
+                }
 /*                button("Debug") {
                     onClick {
                         myDebug()
@@ -290,6 +306,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             }
         }
         loadTreeAsync()
+        invalidateTreeViews()
 
         //Listeners
 
@@ -397,68 +414,34 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         })
     }
 
-    private fun myDebug() {
-        Log.d(TAG, "Debug")
-    }
-
     override fun onDestroy() {
         saveTreeAsync()
         super.onDestroy()
     }
 
-    fun saveTreeAsync() {
-        try {
-            doAsync {
-                writeTree()
-            }
-        } catch (error: Exception) {
-            Log.e(TAG, "Caught exception while writing tree", error)
-        }
-    }
-
-    fun saveTreeSync() {
-        try {
-            writeTree()
-        } catch (error: Exception) {
-            Log.e(TAG, "Caught exception while writing tree", error)
-        }
-    }
-
-    fun loadTreeAsync() {
-        doAsync {
-            try {
-                val tree = readTree()
-                uiThread {
-                    viewModel.tree = tree
-                    viewModel.currentNode = viewModel.tree.rootNode
-                }
-            } catch (error: Exception) {
-                Log.e(TAG, "Caught exception when loading data", error)
-                viewModel.reset()
-            }
-            zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
-            zoomView.invalidate()
-            invalidateTreeViews()
-        }
-    }
-
-    fun loadTreeSync() {
-        try {
-            val tree = readTree()
-            viewModel.tree = tree
-            viewModel.currentNode = viewModel.tree.rootNode
-        } catch (error: Exception) {
-            Log.e(TAG, "Caught exception when loading data", error)
-            viewModel.reset()
-        }
-        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
-        zoomView.invalidate()
-        invalidateTreeViews()
+    private fun myDebug() {
+        Log.d(TAG, "Debug")
     }
 
     fun invalidateTreeViews() {
         treeView.invalidate()
         miniTreeView.invalidate()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { // used when picking a new file
+        if (requestCode == REQUEST_CODE_OPENFILE && resultCode == Activity.RESULT_OK && data?.data != null) {
+            saveTreeSync()
+            val filePath = data.data!!.path
+            val correctedPath = if (filePath!!.startsWith("/document/raw:"))
+                filePath.drop("/document/raw:".length)
+                else filePath
+            FileData.file = File(correctedPath)
+            FileData.page = 0
+            loadTreeSync()
+            zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+            viewModel.backBitmap = viewModel.currentNode.bmp
+
+        }
     }
 
 // Interface functions from child views
@@ -516,6 +499,56 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         val pageDir = File(pdfDir, "${fileData.page}/")
         if (!pageDir.exists()) pageDir.mkdir()
         return pageDir
+    }
+
+    fun saveTreeAsync() {
+        try {
+            doAsync {
+                writeTree()
+            }
+        } catch (error: Exception) {
+            Log.e(TAG, "Caught exception while writing tree", error)
+        }
+    }
+
+    fun saveTreeSync() {
+        try {
+            writeTree()
+        } catch (error: Exception) {
+            Log.e(TAG, "Caught exception while writing tree", error)
+        }
+    }
+
+    fun loadTreeAsync() {
+        doAsync {
+            try {
+                val tree = readTree()
+                uiThread {
+                    viewModel.tree = tree
+                    viewModel.currentNode = viewModel.tree.rootNode
+                }
+            } catch (error: Exception) {
+                Log.e(TAG, "Caught exception when loading data", error)
+                viewModel.reset()
+            }
+            zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+            zoomView.invalidate()
+            invalidateTreeViews()
+        }
+    }
+
+    fun loadTreeSync() {
+        try {
+            val tree = readTree()
+            viewModel.tree = tree
+            viewModel.currentNode = viewModel.tree.rootNode
+        } catch (error: Exception) {
+            Log.e(TAG, "Caught exception when loading data", error)
+            viewModel.reset()
+        }
+        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+        zoomView.invalidate()
+        invalidateTreeViews()
     }
 
     @Throws(Exception::class)
