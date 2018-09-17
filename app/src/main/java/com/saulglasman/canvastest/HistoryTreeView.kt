@@ -12,6 +12,7 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.widget.ImageView
 import java.lang.Math.*
+import kotlin.math.pow
 
 @SuppressLint("ViewConstructor")
 class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val listener: HistoryTreeViewListener) : ImageView(context) {
@@ -169,10 +170,10 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
             viewModel.transformer.translateY += detector.focusY * modifier
             Log.d("TAGIT", "Zoomed by ${detector.scaleFactor}")
             invalidate()
-            return super.onScale(detector)
+            return false
         }
 
-        private fun smoothing(x: Float) = if (x > 1) (5f / 4) else (4f / 5)
+        private fun smoothing(x: Float) = x.pow(0.4f) // trial and error
     }
 
     inner class ScrollListener : GestureDetector.SimpleOnGestureListener() {

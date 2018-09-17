@@ -35,6 +35,12 @@ class BmpTree(var nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords =
         return newNode
     }
 
+    fun deleteNode(node: TreeNode) {
+        val (i, j) = node.coords
+        nodes.remove(node)
+        nodes.filter {it.coords.first == i && it.coords.second > j}.forEach { it.coords = Pair(i, it.coords.second - 1) }
+    }
+
     private fun getChildren(node: TreeNode): List<TreeNode> = nodes.filter { it.parent == node }
 
     fun getDescendantsIncludingSelf(node: TreeNode): List<TreeNode> = if (getChildren(node).isEmpty()) listOf(node)

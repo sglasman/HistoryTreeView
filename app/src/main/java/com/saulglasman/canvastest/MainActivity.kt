@@ -441,7 +441,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
 
 // Interface functions from child views
 
-    override fun deleteNode(node: BmpTree.TreeNode) {
+    override fun deleteNodeAndDescendants(node: BmpTree.TreeNode) {
         if (node == viewModel.tree.rootNode) {
             return
         }
@@ -453,7 +453,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                     viewModel.isEditing.value = false
                 }
                 viewModel.tree.getDescendantsIncludingSelf(node).forEach {
-                    viewModel.tree.nodes.remove(it)
+                    viewModel.tree.deleteNode(it)
                     invalidateTreeViews()
                 }
                 if (viewModel.tree.nodes.size == 1) viewModel.isDeleteButtonEnabled.value = false
@@ -559,7 +559,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
             var fos: FileOutputStream? = null
             try {
                 fos = FileOutputStream(File(pageDir, "${it.coords.first}_${it.coords.second}"))
-                it.bmp?.compress(Bitmap.CompressFormat.PNG, 100, fos)
+                it.bmp?.compress(Bitmap.CompressFormat.WEBP, 20, fos)
                 Log.d(TAG, "Wrote bitmap (${it.coords.first}, ${it.coords.second})")
             } catch (error: Throwable) {
                 Log.e(TAG, "Error writing bitmap fileUri", error)

@@ -38,7 +38,7 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
         override fun onLongPress(e: MotionEvent?) {
             val possibleNode = findCloseNode(e)
             if (possibleNode != null) {
-                listener.deleteNode(possibleNode)
+                listener.deleteNodeAndDescendants(possibleNode)
             }
         }
 
@@ -53,7 +53,7 @@ class TreeView(context: Context, val viewModel: HistoryTreeViewModel, val listen
     }
 
     interface TreeViewListener {
-        fun deleteNode(node: BmpTree.TreeNode)
+        fun deleteNodeAndDescendants(node: BmpTree.TreeNode)
         fun changeToNode(node: BmpTree.TreeNode)
         fun showHideTreeView()
     }
