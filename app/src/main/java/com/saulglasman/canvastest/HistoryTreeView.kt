@@ -5,14 +5,12 @@ import android.content.Context
 import android.graphics.*
 import android.graphics.pdf.PdfRenderer
 import android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
-import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.widget.ImageView
-import java.io.File
 import java.lang.Math.*
 
 @SuppressLint("ViewConstructor")
@@ -41,7 +39,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
 
     interface HistoryTreeViewListener {
         fun addNewNodeAt(node: BmpTree.TreeNode)
-
+        fun setPDFRenderer()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -54,13 +52,14 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
         if (viewModel.backBitmap == null) {
             viewModel.backBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             try {
-                val renderer = PdfRenderer(ParcelFileDescriptor.open(FileData.file, ParcelFileDescriptor.MODE_READ_ONLY))
-                FileData.numPages = renderer.pageCount
-                val renderedPage = renderer.openPage(FileData.page)
+                if (FileData.renderer == null) listener.setPDFRenderer()
+                FileData.numPages = FileData.renderer!!.pageCount
+                val renderedPage = FileData.renderer!!.openPage(FileData.page)
                 renderedPage.render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
                 renderedPage.close()
                 viewModel.currentNode.bmp = viewModel.backBitmap!!
             } catch (error: Throwable) {
+                Log.d(TAG, "Error rendering PDF", error)
             }
         }
     }

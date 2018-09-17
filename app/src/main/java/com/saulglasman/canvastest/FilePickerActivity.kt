@@ -2,8 +2,8 @@ package com.saulglasman.canvastest
 
 import android.app.Activity
 import android.content.Intent
+import android.os.ParcelFileDescriptor
 import androidx.appcompat.app.AppCompatActivity
-import java.io.File
 
 open class FilePickerActivity: AppCompatActivity() {
     fun launchFilePicker() {
@@ -13,16 +13,16 @@ open class FilePickerActivity: AppCompatActivity() {
         startActivityForResult(openFileIntent, REQUEST_CODE_OPENFILE)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { // used when picking a new file
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { // used when picking a new fileUri
         if (requestCode == REQUEST_CODE_OPENFILE && resultCode == Activity.RESULT_OK && data?.data != null) {
-            val filePath = data.data!!.path
+/*            val filePath = data.data!!.path
             val correctedPath = if (filePath!!.startsWith("/document/raw:"))
-            /* (for some reason this was prepended to the path,
-             * causing file not found errors) */
+            *//* (for some reason this was prepended to the path,
+             * causing fileUri not found errors) *//*
                 filePath.drop("/document/raw:".length)
-            else filePath
-            FileData.file = File(correctedPath)
-            FileData.page = 0
+            else filePath*/
+            FileData.fileUri = data.data
+            FileData.setRenderer(contentResolver)
         }
     }
 }

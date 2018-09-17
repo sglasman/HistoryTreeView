@@ -2,16 +2,13 @@ package com.saulglasman.canvastest
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.os.Environment
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import java.io.File
 
 class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
                            var transformer: CanvasTransformer = CanvasTransformer(),
                            var tree: BmpTree = BmpTree(),
                            var currentNode: BmpTree.TreeNode = tree.rootNode,
-
 
                            var isTreeShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isEditing: MutableLiveData<Boolean> = MutableLiveData(),

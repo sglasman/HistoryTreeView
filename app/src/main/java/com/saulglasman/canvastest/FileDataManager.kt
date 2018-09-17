@@ -1,5 +1,8 @@
 package com.saulglasman.canvastest
 
+import android.content.ContentResolver
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import java.io.*
 
@@ -14,8 +17,8 @@ object FileDataManager {
         try {
             fileDataFos = FileOutputStream(File(filesDir, "filedata"))
             fileDataOos = ObjectOutputStream(fileDataFos)
-            fileDataOos.writeObject(FileData.file)
-            Log.d(TAG, "Wrote file data file")
+            fileDataOos.writeObject(FileData.fileUri)
+            Log.d(TAG, "Wrote fileUri data fileUri")
         } catch (error: Throwable) {
             throw error
         } finally {
@@ -25,13 +28,13 @@ object FileDataManager {
     }
 
     @Throws(Throwable::class)
-    fun loadFileData(filesDir: File) {
+    fun loadFileData(filesDir: File, contentResolver: ContentResolver) {
         var fileDataFis: FileInputStream? = null
         var fileDataOis: ObjectInputStream? = null
         try {
             fileDataFis = FileInputStream(File(filesDir, "filedata"))
             fileDataOis = ObjectInputStream(fileDataFis)
-            FileData.file = fileDataOis.readObject() as File
+            FileData.fileUri = fileDataOis.readObject() as Uri
         } catch (error: Throwable) {
             throw error
         } finally {

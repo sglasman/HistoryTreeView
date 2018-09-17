@@ -14,7 +14,6 @@ import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.widget.ImageView
 import android.widget.RelativeLayout
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
@@ -242,10 +241,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                         saveTreeSync()
                         FileData.page--
                         loadTreeSync()
-                        viewModel.enableDisablePgButtons()
-                        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
-                        viewModel.backBitmap = viewModel.currentNode.bmp
-                        viewModel.isSecondaryButtonBarShown.value = true
+                        onPageChanged()
                     }
                 }.lparams {
                     rightOf(ID_DELETEBUTTON)
@@ -261,10 +257,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                         saveTreeSync()
                         FileData.page++
                         loadTreeSync()
-                        viewModel.enableDisablePgButtons()
-                        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
-                        viewModel.backBitmap = viewModel.currentNode.bmp
-                        viewModel.isSecondaryButtonBarShown.value = true
+                        onPageChanged()
                     }
                 }.lparams {
                     rightOf(ID_PGUPBUTTON)
@@ -412,6 +405,17 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
         })
     }
 
+    fun onPageChanged() {
+        viewModel.enableDisablePgButtons()
+        viewModel.backBitmap = viewModel.currentNode.bmp
+        /* above: either the RHS is null, in which case either we haven't
+                         * loaded this page before or there was an error, or we have loaded the page before, in
+                         * which case it's the base PDF.
+                         */
+        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+        viewModel.isSecondaryButtonBarShown.value = true
+    }
+
     override fun onDestroy() {
         saveTreeAndFileAsync()
         super.onDestroy()
@@ -426,13 +430,12 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
         miniTreeView.invalidate()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { // used when picking a new file
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { // used when picking a new fileUri
         if (requestCode == REQUEST_CODE_OPENFILE && resultCode == Activity.RESULT_OK && data?.data != null) {
             saveTreeSync()
             super.onActivityResult(requestCode, resultCode, data)
             loadTreeSync()
-            zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
-            viewModel.backBitmap = viewModel.currentNode.bmp
+            onPageChanged()
         }
     }
 
@@ -483,6 +486,10 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
         viewModel.isTreeShown.value = !viewModel.isTreeShown.value!!
     }
 
+    override fun setPDFRenderer() {
+        FileData.setRenderer(contentResolver)
+    }
+
 // Filesystem-related functions
 
     fun getPageDir(fileData: FileData): File {
@@ -508,7 +515,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 FileDataManager.saveFileData(filesDir)
             }
         } catch (error: Exception) {
-            Log.e(TAG, "Caught exception while writing tree or file data", error)
+            Log.e(TAG, "Caught exception while writing tree or fileUri data", error)
         }
     }
 
@@ -547,14 +554,15 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
     @Throws(Throwable::class)
     private fun writeTree() {
         val pageDir = getPageDir(FileData)
-        viewModel.tree.nodes.filter { it.altered }.forEach {//only save nodes where editing has taken place
+        viewModel.tree.nodes.filter { it.altered }.forEach {
+            //only save nodes where editing has taken place
             var fos: FileOutputStream? = null
             try {
                 fos = FileOutputStream(File(pageDir, "${it.coords.first}_${it.coords.second}"))
                 it.bmp?.compress(Bitmap.CompressFormat.PNG, 100, fos)
                 Log.d(TAG, "Wrote bitmap (${it.coords.first}, ${it.coords.second})")
             } catch (error: Throwable) {
-                Log.e(TAG, "Error writing bitmap file", error)
+                Log.e(TAG, "Error writing bitmap fileUri", error)
             } finally {
                 fos?.close()
             }
@@ -565,7 +573,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
             dataFos = FileOutputStream(File(pageDir, "data"))
             dataOos = ObjectOutputStream(dataFos)
             dataOos.writeObject(viewModel.tree)
-            Log.d(TAG, "Wrote data file")
+            Log.d(TAG, "Wrote data fileUri")
         } catch (error: Throwable) {
             throw error
         } finally {
@@ -593,7 +601,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 it.stackPointer = 0
                 it.isActive = false
             }
-            Log.d(TAG, "Successfully loaded data file. Nodes: ${tree.nodes.size}.")
+            Log.d(TAG, "Successfully loaded data fileUri. Nodes: ${tree.nodes.size}.")
         } catch (error: Throwable) {
             throw error
         } finally {

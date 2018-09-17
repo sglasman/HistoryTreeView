@@ -4,33 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import java.io.Serializable
 
-/*class BmpTree(var nodeBmp: Bitmap? = null, var kids: MutableList<BmpTree> = mutableListOf()) : Serializable {
-    fun addKid(kid: BmpTree) {
-        kids.add(kid)
-    }
-
-    fun layerSizes(): List<Int> = listOf(1).plus(
-            kids.map { layerSizes() }.fold(listOf<Int>()) { acc, i -> listAdd(acc, i) }
-    )
-
-    companion object {
-        fun listAdd(acc: List<Int>, i: List<Int>): List<Int> =
-                if (acc.size >= i.size) listAddAsymm(acc, i) else listAddAsymm(i, acc)
-
-        private fun listAddAsymm(longer: List<Int>, shorter: List<Int>): List<Int> {
-            val l = longer.size
-            val s = shorter.size
-            val longerStart = longer.slice(IntRange(0, s - 1))
-            val longerEnd = longer.slice(IntRange(s, l - 1))
-            return longerStart.zip(shorter) { a, b -> a + b }
-                    .plus(longerEnd)
-        }
-    }
-}*/
-
-/*val testTree: BmpTree = BmpTree(mutableListOf(mutableListOf<Bitmap?>(null, null), mutableListOf<Bitmap?>(null, null, null)),
-        mutableListOf(mutableListOf(Pair(0, 0), Pair(0, 1), Pair(1, 2))))*/
-
 class BmpTree(var nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords = Pair(0, 0), isActive = false, color = Color.BLACK))): Serializable {
 
     /* `nodes` is a list of tree nodes, each of which carries the data of its parent (unless it's the root),
