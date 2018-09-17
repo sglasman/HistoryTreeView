@@ -27,7 +27,7 @@ import java.io.*
 import java.lang.Integer.parseInt
 
 @Suppress("EXPERIMENTAL_FEATURE_WARNING", "NestedLambdaShadowedImplicitParameter")
-class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTreeView.HistoryTreeViewListener {
+class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTreeView.HistoryTreeViewListener {
 
     lateinit var viewModel: HistoryTreeViewModel
 
@@ -47,7 +47,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     lateinit var miniTreeView: TreeView
     lateinit var colorSelectDialog: DialogInterface
 
-
     val TAG = MainActivity::class.java.simpleName
 
     @SuppressLint("SetTextI18n")
@@ -60,7 +59,6 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
             ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, 2)
         }
         viewModel = ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java)
-
 
         relativeLayout {
 
@@ -247,6 +245,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         viewModel.enableDisablePgButtons()
                         zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
                         viewModel.backBitmap = viewModel.currentNode.bmp
+                        viewModel.isSecondaryButtonBarShown.value = true
                     }
                 }.lparams {
                     rightOf(ID_DELETEBUTTON)
@@ -265,6 +264,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                         viewModel.enableDisablePgButtons()
                         zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
                         viewModel.backBitmap = viewModel.currentNode.bmp
+                        viewModel.isSecondaryButtonBarShown.value = true
                     }
                 }.lparams {
                     rightOf(ID_PGUPBUTTON)
@@ -276,10 +276,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                     image = getDrawable(R.drawable.ic_pdf_file)
                     padding = dip(4)
                     onClick {
-                        val openFileIntent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-                                .addCategory(Intent.CATEGORY_OPENABLE)
-                                .setType("application/pdf")
-                        startActivityForResult(openFileIntent, REQUEST_CODE_OPENFILE)
+                        launchFilePicker()
                     }
                 }.lparams {
                     rightOf(ID_PGDOWNBUTTON)
@@ -387,6 +384,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         })
         viewModel.isSecondaryButtonBarShown.observe(this, Observer {
             if (it) {
+                viewModel.enableDisablePgButtons()
                 moreButton.backgroundColor = Color.WHITE
                 secondaryButtonBar.visibility = VISIBLE
             } else {
@@ -415,7 +413,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     }
 
     override fun onDestroy() {
-        saveTreeAsync()
+        saveTreeAndFileAsync()
         super.onDestroy()
     }
 
@@ -431,16 +429,10 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { // used when picking a new file
         if (requestCode == REQUEST_CODE_OPENFILE && resultCode == Activity.RESULT_OK && data?.data != null) {
             saveTreeSync()
-            val filePath = data.data!!.path
-            val correctedPath = if (filePath!!.startsWith("/document/raw:"))
-                filePath.drop("/document/raw:".length)
-                else filePath
-            FileData.file = File(correctedPath)
-            FileData.page = 0
+            super.onActivityResult(requestCode, resultCode, data)
             loadTreeSync()
             zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
             viewModel.backBitmap = viewModel.currentNode.bmp
-
         }
     }
 
@@ -501,21 +493,22 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         return pageDir
     }
 
-    fun saveTreeAsync() {
-        try {
-            doAsync {
-                writeTree()
-            }
-        } catch (error: Exception) {
-            Log.e(TAG, "Caught exception while writing tree", error)
-        }
-    }
-
     fun saveTreeSync() {
         try {
             writeTree()
         } catch (error: Exception) {
             Log.e(TAG, "Caught exception while writing tree", error)
+        }
+    }
+
+    fun saveTreeAndFileAsync() {
+        try {
+            doAsync {
+                writeTree()
+                FileDataManager.saveFileData(filesDir)
+            }
+        } catch (error: Exception) {
+            Log.e(TAG, "Caught exception while writing tree or file data", error)
         }
     }
 
@@ -551,10 +544,10 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         invalidateTreeViews()
     }
 
-    @Throws(Exception::class)
+    @Throws(Throwable::class)
     private fun writeTree() {
         val pageDir = getPageDir(FileData)
-        viewModel.tree.nodes.forEach {
+        viewModel.tree.nodes.filter { it.altered }.forEach {//only save nodes where editing has taken place
             var fos: FileOutputStream? = null
             try {
                 fos = FileOutputStream(File(pageDir, "${it.coords.first}_${it.coords.second}"))
@@ -584,7 +577,7 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
         }")
     }
 
-    @Throws(Exception::class)
+    @Throws(Throwable::class)
     private fun readTree(): BmpTree {
         val regex = Regex(FILE_REGEX_STRING)
         var dataFis: FileInputStream? = null
@@ -614,9 +607,9 @@ class MainActivity : AppCompatActivity(), TreeView.TreeViewListener, HistoryTree
                 val bitmap = BitmapFactory.decodeFile(it.path, BitmapFactory.Options().apply { inMutable = true })
                 if (tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2))) != null) Log.d(TAG, "Yes: $coord1, $coord2")
                 tree.nodeAtCoords(Pair(parseInt(coord1), parseInt(coord2)))?.bmp = bitmap
-
             }
         }
+        tree.nodes.forEach { it.altered = false } // we just loaded, so nothing has been altered since the last save
         return tree
     }
 }

@@ -69,7 +69,7 @@ class BmpTree(var nodes: MutableList<TreeNode> = mutableListOf(TreeNode(coords =
 
     data class TreeNode(@Transient var bmp: Bitmap? = null, val parent: TreeNode? = null, var coords: Pair<Int, Int>,
                         var color: Int? = null, var isActive: Boolean = true, @Transient var undoRedoStack: MutableList<Bitmap> = mutableListOf(),
-                        var stackPointer: Int = 0): Serializable {
+                        var stackPointer: Int = 0, var altered: Boolean = true): Serializable {
 
         fun markInactive() {
             this.isActive = false

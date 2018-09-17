@@ -21,7 +21,6 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
     val TAG = HistoryTreeView::class.java.simpleName
     val paint = Paint()
     val path = Path()
-    var renderer = PdfRenderer(ParcelFileDescriptor.open(FileData.file, ParcelFileDescriptor.MODE_READ_ONLY))
     private val scaleGestureDetector: ScaleGestureDetector = ScaleGestureDetector(context, ZoomListener())
     private val gestureDetector: GestureDetector = GestureDetector(context, ScrollListener())
     lateinit var pathCanvas: Canvas
@@ -37,7 +36,6 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
             strokeWidth = STROKE_WIDTH
             strokeCap = Paint.Cap.ROUND
         }
-        FileData.numPages = renderer.pageCount
         viewModel.enableDisablePgButtons()
     }
 
@@ -55,11 +53,15 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
     fun initBackBitmapIfNull(width: Int, height: Int) {
         if (viewModel.backBitmap == null) {
             viewModel.backBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            renderer = PdfRenderer(ParcelFileDescriptor.open(FileData.file, ParcelFileDescriptor.MODE_READ_ONLY))
-            val renderedPage = renderer.openPage(FileData.page)
-            renderedPage.render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
-            renderedPage.close()
-            viewModel.currentNode.bmp = viewModel.backBitmap!!
+            try {
+                val renderer = PdfRenderer(ParcelFileDescriptor.open(FileData.file, ParcelFileDescriptor.MODE_READ_ONLY))
+                FileData.numPages = renderer.pageCount
+                val renderedPage = renderer.openPage(FileData.page)
+                renderedPage.render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
+                renderedPage.close()
+                viewModel.currentNode.bmp = viewModel.backBitmap!!
+            } catch (error: Throwable) {
+            }
         }
     }
 
@@ -127,6 +129,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
     private fun touchStart(x: Float, y: Float) {
         val (transformedX, transformedY) = viewModel.transformer.transform(Coord(x, y))
         if (mode == CanvasMode.MODE_DRAW) {
+
             if (!viewModel.currentNode.isActive) {
                 listener.addNewNodeAt(viewModel.currentNode)
             }
@@ -143,6 +146,8 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
             path.moveTo(transformedX, transformedY)
             currX = transformedX
             currY = transformedY
+
+            viewModel.currentNode.altered = true // node will be saved out when navigating away from page
 
             invalidate()
         }
