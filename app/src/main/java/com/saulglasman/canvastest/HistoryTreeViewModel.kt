@@ -9,6 +9,7 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
                            var transformer: CanvasTransformer = CanvasTransformer(),
                            var tree: BmpTree = BmpTree(),
                            var currentNode: BmpTree.TreeNode = tree.rootNode,
+                           var mode: CanvasMode = CanvasMode.MODE_NAV,
 
                            var isTreeShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isEditing: MutableLiveData<Boolean> = MutableLiveData(),

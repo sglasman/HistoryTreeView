@@ -26,7 +26,7 @@ import java.io.*
 import java.lang.Integer.parseInt
 
 @Suppress("EXPERIMENTAL_FEATURE_WARNING", "NestedLambdaShadowedImplicitParameter")
-class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTreeView.HistoryTreeViewListener {
+class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTreeView.HistoryTreeViewListener, BackView.BackViewListener {
 
     lateinit var viewModel: HistoryTreeViewModel
 
@@ -44,6 +44,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
     lateinit var secondaryButtonBar: RelativeLayout
     lateinit var treeView: TreeView
     lateinit var miniTreeView: TreeView
+    lateinit var backView: BackView
     lateinit var colorSelectDialog: DialogInterface
 
     val TAG = MainActivity::class.java.simpleName
@@ -60,14 +61,17 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
         viewModel = ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java)
 
         relativeLayout {
-
-            zoomView = historyTreeView(viewModel, this@MainActivity) {
-                id = ID_MAINVIEW
+            frameLayout {
+                backView = backView(viewModel, this@MainActivity)
+                zoomView = historyTreeView(viewModel, this@MainActivity) {
+                    id = ID_MAINVIEW
+                }
             }.lparams {
                 alignParentTop()
                 width = matchParent
                 above(ID_TREEVIEW)
             }
+
             miniTreeView = treeView(viewModel, this@MainActivity, false).lparams {
                 width = dip(100)
                 height = dip(40)
@@ -304,7 +308,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
         {
             if (it) {
                 editButton.backgroundColor = Color.WHITE
-                zoomView.mode = CanvasMode.MODE_DRAW
+                viewModel.mode = CanvasMode.MODE_DRAW
                 undoButton.visibility = VISIBLE
                 redoButton.visibility = VISIBLE
                 deleteButton.visibility = GONE
@@ -312,7 +316,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 viewModel.isSecondaryButtonBarShown.value = false
             } else {
                 editButton.backgroundColor = Color.TRANSPARENT
-                zoomView.mode = CanvasMode.MODE_NAV
+                viewModel.mode = CanvasMode.MODE_NAV
                 undoButton.visibility = GONE
                 redoButton.visibility = GONE
                 deleteButton.visibility = VISIBLE
@@ -412,7 +416,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                          * loaded this page before or there was an error, or we have loaded the page before, in
                          * which case it's the base PDF.
                          */
-        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+        backView.initBackBitmapIfNull(zoomView.width, zoomView.height)
         viewModel.isSecondaryButtonBarShown.value = true
     }
 
@@ -490,6 +494,10 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
         FileData.setRenderer(contentResolver)
     }
 
+    override fun invalidateBackView() {
+        backView.invalidate()
+    }
+
 // Filesystem-related functions
 
     fun getPageDir(fileData: FileData): File {
@@ -531,7 +539,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 Log.e(TAG, "Caught exception when loading data", error)
                 viewModel.reset()
             }
-            zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+            backView.initBackBitmapIfNull(zoomView.width, zoomView.height)
             zoomView.invalidate()
             invalidateTreeViews()
         }
@@ -546,7 +554,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
             Log.e(TAG, "Caught exception when loading data", error)
             viewModel.reset()
         }
-        zoomView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+        backView.initBackBitmapIfNull(zoomView.width, zoomView.height)
         zoomView.invalidate()
         invalidateTreeViews()
     }

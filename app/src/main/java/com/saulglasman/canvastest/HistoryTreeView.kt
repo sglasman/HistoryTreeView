@@ -3,30 +3,19 @@ package com.saulglasman.canvastest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
-import android.graphics.pdf.PdfRenderer
-import android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
-import android.os.ParcelFileDescriptor
-import android.util.Log
-import android.view.GestureDetector
 import android.view.MotionEvent
-import android.view.ScaleGestureDetector
-import android.widget.ImageView
-import java.lang.Math.*
-import kotlin.math.pow
+import java.lang.Math.abs
 
 @SuppressLint("ViewConstructor")
-class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val listener: HistoryTreeViewListener) : ImageView(context) {
+class HistoryTreeView(context: Context, viewModel: HistoryTreeViewModel, val listener: HistoryTreeViewListener) : TransformableView(context, viewModel) {
 
     val TAG = HistoryTreeView::class.java.simpleName
     val paint = Paint()
     val path = Path()
-    private val scaleGestureDetector: ScaleGestureDetector = ScaleGestureDetector(context, ZoomListener())
-    private val gestureDetector: GestureDetector = GestureDetector(context, ScrollListener())
     lateinit var pathCanvas: Canvas
     var currX: Float = 0f
     var currY: Float = 0f
     lateinit var frame: Rect
-    var mode: CanvasMode = CanvasMode.MODE_NAV
 
     init {
         with(paint) {
@@ -40,47 +29,21 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
 
     interface HistoryTreeViewListener {
         fun addNewNodeAt(node: BmpTree.TreeNode)
-        fun setPDFRenderer()
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        Log.d(TAG, "Size changed: $w, $h from $oldw, $oldh")
-        initBackBitmapIfNull(w, h)
-    }
-
-    fun initBackBitmapIfNull(width: Int, height: Int) {
-        if (viewModel.backBitmap == null) {
-            viewModel.backBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            try {
-                if (FileData.renderer == null) listener.setPDFRenderer()
-                FileData.numPages = FileData.renderer!!.pageCount
-                val renderedPage = FileData.renderer!!.openPage(FileData.page)
-                renderedPage.render(viewModel.backBitmap!!, null, null, RENDER_MODE_FOR_DISPLAY)
-                renderedPage.close()
-                viewModel.currentNode.bmp = viewModel.backBitmap!!
-            } catch (error: Throwable) {
-                Log.d(TAG, "Error rendering PDF", error)
-            }
-        }
+        fun invalidateBackView()
     }
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-
-        canvas!!.scale(viewModel.transformer.scaleFactor, viewModel.transformer.scaleFactor)
-        canvas.translate(viewModel.transformer.translateX, viewModel.transformer.translateY)
-
-        canvas.drawBitmap(viewModel.backBitmap!!, 0f, 0f, null)
-        canvas.drawBitmap(overlayBmpList(viewModel.currentNode.undoRedoStack.take(viewModel.currentNode.stackPointer)), 0f, 0f, paint)
+        canvas!!.drawBitmap(overlayBmpList(viewModel.currentNode.undoRedoStack.take(viewModel.currentNode.stackPointer)), 0f, 0f, paint)
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         if (event == null) return false
-        if (mode == CanvasMode.MODE_NAV) {
+        if (viewModel.mode == CanvasMode.MODE_NAV) {
             scaleGestureDetector.onTouchEvent(event)
             if (scaleGestureDetector.isInProgress) return false
             gestureDetector.onTouchEvent(event)
+            listener.invalidateBackView()
         }
         val x = event.x
         val y = event.y
@@ -99,7 +62,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
     }
 
     private fun touchUp() {
-        if (mode == CanvasMode.MODE_DRAW) {
+        if (viewModel.mode == CanvasMode.MODE_DRAW) {
             viewModel.currentNode.bmp = overlayBmpList(viewModel.currentNode.undoRedoStack)
             path.reset()
         }
@@ -110,7 +73,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
         val dx = transformedX - currX
         val dy = transformedY - currY
         if (abs(dx) >= touchTolerance || abs(dy) >= touchTolerance) {
-            when (mode) {
+            when (viewModel.mode) {
                 CanvasMode.MODE_NAV -> {
 /*                    transformer.translateX += dx
                     transformer.translateY += dy
@@ -128,7 +91,7 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
 
     private fun touchStart(x: Float, y: Float) {
         val (transformedX, transformedY) = viewModel.transformer.transform(Coord(x, y))
-        if (mode == CanvasMode.MODE_DRAW) {
+        if (viewModel.mode == CanvasMode.MODE_DRAW) {
 
             if (!viewModel.currentNode.isActive) {
                 listener.addNewNodeAt(viewModel.currentNode)
@@ -157,33 +120,4 @@ class HistoryTreeView(context: Context, val viewModel: HistoryTreeViewModel, val
         viewModel.currentNode.undoRedoStack = mutableListOf()
         viewModel.currentNode.stackPointer = 0
     }
-
-    inner class ZoomListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-        override fun onScale(detector: ScaleGestureDetector?): Boolean {
-            if (detector == null) return false
-            val oldScaleFactor = viewModel.transformer.scaleFactor
-            viewModel.transformer.scaleFactor *= smoothing(detector.scaleFactor)
-            viewModel.transformer.scaleFactor = max(1f, min(viewModel.transformer.scaleFactor, 5f))
-            val adjustedScaleFactor = viewModel.transformer.scaleFactor / oldScaleFactor
-            val modifier = (1 / adjustedScaleFactor - 1) / oldScaleFactor // just getting the right center of zoom
-            viewModel.transformer.translateX += detector.focusX * modifier
-            viewModel.transformer.translateY += detector.focusY * modifier
-            Log.d("TAGIT", "Zoomed by ${detector.scaleFactor}")
-            invalidate()
-            return false
-        }
-
-        private fun smoothing(x: Float) = x.pow(0.4f) // trial and error
-    }
-
-    inner class ScrollListener : GestureDetector.SimpleOnGestureListener() {
-        override fun onScroll(e1: MotionEvent?, e2: MotionEvent?, distanceX: Float, distanceY: Float): Boolean {
-            viewModel.transformer.translateX -= distanceX / viewModel.transformer.scaleFactor
-            viewModel.transformer.translateY -= distanceY / viewModel.transformer.scaleFactor
-            Log.d("TAGIT", "Translated by (${distanceX / viewModel.transformer.scaleFactor}, ${distanceY / viewModel.transformer.scaleFactor}")
-            return super.onScroll(e1, e2, distanceX, distanceY)
-        }
-    }
-
-    data class Coord(val x: Float, val y: Float)
 }
