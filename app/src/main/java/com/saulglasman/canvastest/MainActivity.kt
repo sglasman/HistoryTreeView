@@ -420,9 +420,9 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
         viewModel.isSecondaryButtonBarShown.value = true
     }
 
-    override fun onDestroy() {
+    override fun onStop() {
         saveTreeAndFileAsync()
-        super.onDestroy()
+        super.onStop()
     }
 
     private fun myDebug() {
@@ -518,10 +518,10 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
 
     fun saveTreeAndFileAsync() {
         try {
-            doAsync {
+            //doAsync {
                 writeTree()
                 FileDataManager.saveFileData(filesDir)
-            }
+            //}
         } catch (error: Exception) {
             Log.e(TAG, "Caught exception while writing tree or fileUri data", error)
         }
@@ -540,6 +540,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 viewModel.reset()
             }
             backView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+            backView.invalidate()
             zoomView.invalidate()
             invalidateTreeViews()
         }
@@ -555,6 +556,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
             viewModel.reset()
         }
         backView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+        backView.invalidate()
         zoomView.invalidate()
         invalidateTreeViews()
     }

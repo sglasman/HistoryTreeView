@@ -3,7 +3,6 @@ package com.saulglasman.canvastest
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import org.jetbrains.anko.frameLayout
 
 class FileLoaderActivity : FilePickerActivity()
 
@@ -12,9 +11,8 @@ class FileLoaderActivity : FilePickerActivity()
 {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        frameLayout()
         try {
-            FileDataManager.loadFileData(filesDir, contentResolver)
+            FileDataManager.loadFileData(filesDir)
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         } catch (error: Throwable) {

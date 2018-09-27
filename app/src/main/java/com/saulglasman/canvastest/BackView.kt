@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.pdf.PdfRenderer
 import android.util.Log
 import android.view.MotionEvent
+import org.jetbrains.anko.image
 
 class BackView(context: Context, viewModel: HistoryTreeViewModel, val listener: BackViewListener) : TransformableView(context, viewModel) {
 

@@ -1,10 +1,11 @@
 package com.saulglasman.canvastest
 
-import android.content.ContentResolver
-import android.content.Context
 import android.net.Uri
 import android.util.Log
-import java.io.*
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.ObjectInputStream
 
 object FileDataManager {
 
@@ -12,34 +13,22 @@ object FileDataManager {
 
     @Throws(Throwable::class)
     fun saveFileData(filesDir: File) {
-        var fileDataFos: FileOutputStream? = null
-        var fileDataOos: ObjectOutputStream? = null
         try {
-            fileDataFos = FileOutputStream(File(filesDir, "filedata"))
-            fileDataOos = ObjectOutputStream(fileDataFos)
-            fileDataOos.writeObject(FileData.fileUri)
+            val fileDataFile = File(filesDir, "filedata")
+            fileDataFile.writeText(FileData.fileUri.toString())
             Log.d(TAG, "Wrote fileUri data fileUri")
         } catch (error: Throwable) {
             throw error
-        } finally {
-            fileDataFos?.close()
-            fileDataOos?.close()
         }
     }
 
     @Throws(Throwable::class)
-    fun loadFileData(filesDir: File, contentResolver: ContentResolver) {
-        var fileDataFis: FileInputStream? = null
-        var fileDataOis: ObjectInputStream? = null
+    fun loadFileData(filesDir: File) {
         try {
-            fileDataFis = FileInputStream(File(filesDir, "filedata"))
-            fileDataOis = ObjectInputStream(fileDataFis)
-            FileData.fileUri = fileDataOis.readObject() as Uri
+            val fileDataFile = File(filesDir, "filedata")
+            FileData.fileUri = Uri.parse(fileDataFile.readText())
         } catch (error: Throwable) {
             throw error
-        } finally {
-            fileDataFis?.close()
-            fileDataOis?.close()
         }
     }
 }

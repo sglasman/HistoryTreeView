@@ -41,7 +41,7 @@ class HistoryTreeView(context: Context, viewModel: HistoryTreeViewModel, val lis
         if (event == null) return false
         if (viewModel.mode == CanvasMode.MODE_NAV) {
             scaleGestureDetector.onTouchEvent(event)
-            if (scaleGestureDetector.isInProgress) return false
+            //if (scaleGestureDetector.isInProgress) return false
             gestureDetector.onTouchEvent(event)
             listener.invalidateBackView()
         }

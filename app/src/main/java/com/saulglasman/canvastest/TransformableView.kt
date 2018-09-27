@@ -35,7 +35,7 @@ abstract class TransformableView(context: Context, val viewModel: HistoryTreeVie
             return false
         }
 
-        private fun smoothing(x: Float) = x.pow(0.4f) // trial and error
+        private fun smoothing(x: Float) = x.pow(0.8f) // trial and error
     }
 
     inner class ScrollListener : GestureDetector.SimpleOnGestureListener() {
