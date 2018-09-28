@@ -2,7 +2,6 @@ package com.saulglasman.canvastest
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -16,6 +15,7 @@ import android.widget.ImageView
 import android.widget.RelativeLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.children
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
@@ -30,10 +30,11 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
 
     lateinit var viewModel: HistoryTreeViewModel
 
-    lateinit var zoomView: HistoryTreeView
+    lateinit var mainView: HistoryTreeView
     lateinit var editButton: ImageView
     lateinit var commitButton: ImageView
     lateinit var colorChangeButton: ImageView
+    lateinit var depressedColorChangeButton: ImageView
     lateinit var undoButton: ImageView
     lateinit var redoButton: ImageView
     lateinit var moreButton: ImageView
@@ -41,11 +42,12 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
     lateinit var pgUpButton: ImageView
     lateinit var pgDownButton: ImageView
     lateinit var openFileButton: ImageView
+    lateinit var primaryButtonBar: RelativeLayout
     lateinit var secondaryButtonBar: RelativeLayout
+    lateinit var colorSelectionBar: RelativeLayout
     lateinit var treeView: TreeView
     lateinit var miniTreeView: TreeView
     lateinit var backView: BackView
-    lateinit var colorSelectDialog: DialogInterface
 
     val TAG = MainActivity::class.java.simpleName
 
@@ -59,11 +61,10 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
             ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, 2)
         }
         viewModel = ViewModelProviders.of(this).get(HistoryTreeViewModel::class.java)
-
         relativeLayout {
             frameLayout {
                 backView = backView(viewModel, this@MainActivity)
-                zoomView = historyTreeView(viewModel, this@MainActivity) {
+                mainView = historyTreeView(viewModel, this@MainActivity) {
                     id = ID_MAINVIEW
                 }
             }.lparams {
@@ -71,102 +72,102 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 width = matchParent
                 above(ID_TREEVIEW)
             }
-
             miniTreeView = treeView(viewModel, this@MainActivity, false).lparams {
                 width = dip(100)
                 height = dip(40)
-                Log.d(TAG, "($width, $height)")
                 alignParentTop()
                 alignParentRight()
             }
-            relativeLayout {
-                id = ID_BUTTONBAR
-                backgroundColor = Color.LTGRAY
-                editButton = imageView {
-                    id = ID_EDITBUTTON
-                    image = getDrawable(R.drawable.ic_pencil)
-                    padding = dip(4)
-                    onClick {
-                        viewModel.isEditing.value = !(viewModel.isEditing.value!!)
-                    }
-                }.lparams {
-                    alignParentLeft()
-                    padding = dip(12)
-                    rightMargin = dip(32)
-                }
-                commitButton = imageView {
-                    id = ID_COMMITBUTTON
-                    visibility = VISIBLE
-                    image = getDrawable(R.drawable.ic_check_mark_pale)
-                    padding = dip(4)
-                    onClick {
-                        viewModel.currentNode.bmp = overlayBmpList(viewModel.currentNode.undoRedoStack.take(viewModel.currentNode.stackPointer)) //necessary in case there have been some undos
-                        if (viewModel.currentNode.bmp == null) {
-                            make(zoomView, "Nothing to commit", LENGTH_SHORT).show()
-                        } else {
-                            viewModel.currentNode.markInactive()
-                            viewModel.arrangeBmps()
-                            viewModel.isEditing.value = false
-                            viewModel.isCommitButtonEnabled.value = false
-                            zoomView.resetUndoRedoStack()
+            frameLayout {
+                id = ID_BUTTONFRAME
+                primaryButtonBar = relativeLayout {
+                    id = ID_BUTTONBAR
+                    backgroundColor = Color.LTGRAY
+                    editButton = imageView {
+                        id = ID_EDITBUTTON
+                        image = getDrawable(R.drawable.ic_pencil)
+                        padding = dip(4)
+                        onClick {
+                            viewModel.isEditing.value = !(viewModel.isEditing.value!!)
                         }
+                    }.lparams {
+                        alignParentLeft()
+                        padding = dip(12)
+                        rightMargin = dip(32)
                     }
-                }.lparams {
-                    rightOf(ID_EDITBUTTON)
-                    padding = dip(12)
-                    rightMargin = dip(32)
-                }
-                undoButton = imageView {
-                    id = ID_UNDOBUTTON
-                    isEnabled = false
-                    image = getDrawable(R.drawable.ic_undo_arrow_pale)
-                    padding = dip(4)
-                    onClick {
-                        if (viewModel.currentNode.stackPointer > 0) {
-                            viewModel.currentNode.stackPointer--
-                            zoomView.invalidate()
-                            viewModel.enableDisableUndoRedoButtons()
+                    commitButton = imageView {
+                        id = ID_COMMITBUTTON
+                        visibility = VISIBLE
+                        image = getDrawable(R.drawable.ic_check_mark_pale)
+                        padding = dip(4)
+                        onClick {
+                            viewModel.currentNode.bmp = overlayBmpList(viewModel.currentNode.undoRedoStack.take(viewModel.currentNode.stackPointer)) //necessary in case there have been some undos
+                            if (viewModel.currentNode.bmp == null) {
+                                make(mainView, "Nothing to commit", LENGTH_SHORT).show()
+                            } else {
+                                viewModel.currentNode.markInactive()
+                                viewModel.arrangeBmps()
+                                viewModel.isEditing.value = false
+                                viewModel.isCommitButtonEnabled.value = false
+                                mainView.resetUndoRedoStack()
+                            }
                         }
+                    }.lparams {
+                        rightOf(ID_EDITBUTTON)
+                        padding = dip(12)
+                        rightMargin = dip(32)
                     }
-                }.lparams {
-                    rightOf(ID_COMMITBUTTON)
-                    padding = dip(12)
-                    rightMargin = dip(32)
-                }
-                redoButton = imageView {
-                    id = ID_REDOBUTTON
-                    isEnabled = false
-                    image = getDrawable(R.drawable.ic_redo_arrow_pale)
-                    padding = dip(4)
-                    onClick {
-                        if (viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size) {
-                            viewModel.currentNode.stackPointer++
-                            zoomView.invalidate()
-                            viewModel.enableDisableUndoRedoButtons()
+                    undoButton = imageView {
+                        id = ID_UNDOBUTTON
+                        isEnabled = false
+                        image = getDrawable(R.drawable.ic_undo_arrow_pale)
+                        padding = dip(4)
+                        onClick {
+                            if (viewModel.currentNode.stackPointer > 0) {
+                                viewModel.currentNode.stackPointer--
+                                mainView.invalidate()
+                                viewModel.enableDisableUndoRedoButtons()
+                            }
                         }
+                    }.lparams {
+                        rightOf(ID_COMMITBUTTON)
+                        padding = dip(12)
+                        rightMargin = dip(32)
                     }
-                }.lparams {
-                    rightOf(ID_UNDOBUTTON)
-                    padding = dip(12)
-                    rightMargin = dip(32)
-                }
-                moreButton = imageView {
-                    id = ID_MOREBUTTON
-                    image = getDrawable(R.drawable.ic_ellipsis_h)
-                    padding = dip(4)
-                    onClick {
-                        viewModel.isSecondaryButtonBarShown.value = !viewModel.isSecondaryButtonBarShown.value!!
+                    redoButton = imageView {
+                        id = ID_REDOBUTTON
+                        isEnabled = false
+                        image = getDrawable(R.drawable.ic_redo_arrow_pale)
+                        padding = dip(4)
+                        onClick {
+                            if (viewModel.currentNode.stackPointer < viewModel.currentNode.undoRedoStack.size) {
+                                viewModel.currentNode.stackPointer++
+                                mainView.invalidate()
+                                viewModel.enableDisableUndoRedoButtons()
+                            }
+                        }
+                    }.lparams {
+                        rightOf(ID_UNDOBUTTON)
+                        padding = dip(12)
+                        rightMargin = dip(32)
                     }
-                }.lparams {
-                    rightOf(ID_REDOBUTTON)
-                    padding = dip(12)
-                    rightMargin = dip(32)
-                }
-                colorChangeButton = imageView {
-                    id = ID_COLORCHANGEBUTTON
-                    image = getDrawable(R.drawable.square)
-                    padding = dip(4)
-                    onClick {
+                    moreButton = imageView {
+                        id = ID_MOREBUTTON
+                        image = getDrawable(R.drawable.ic_ellipsis_h)
+                        padding = dip(4)
+                        onClick {
+                            viewModel.isSecondaryButtonBarShown.value = !viewModel.isSecondaryButtonBarShown.value!!
+                        }
+                    }.lparams {
+                        rightOf(ID_REDOBUTTON)
+                        padding = dip(12)
+                        rightMargin = dip(32)
+                    }
+                    colorChangeButton = imageView {
+                        id = ID_COLORCHANGEBUTTON
+                        image = getDrawable(R.drawable.square)
+                        padding = dip(4)
+/*                    onClick {
                         colorSelectDialog = alert {
                             customView {
                                 verticalLayout {
@@ -198,20 +199,65 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                                 }
                             }
                         }.show() // show color change dialog
+                    }*/
+                        onClick {
+                            viewModel.isSelectingColor.value = true
+                        }
+                    }.lparams {
+                        height = dip(30)
+                        width = dip(30)
+                        alignParentRight()
+                        padding = dip(12)
+                        leftMargin = dip(32)
+                        centerVertically()
                     }
                 }.lparams {
-                    height = dip(30)
-                    width = dip(30)
-                    alignParentRight()
-                    padding = dip(12)
-                    leftMargin = dip(32)
-                    centerVertically()
+                    width = matchParent
+                    height = wrapContent
+                }
+                colorSelectionBar = relativeLayout {
+                    visibility = GONE
+                    backgroundColor = Color.LTGRAY
+                    linearLayout {
+                        COLORS.forEach { color ->
+                            colorSelectButton(color, color == viewModel.drawColor.value) {
+                                onClick {
+                                    viewModel.drawColor.value = color
+                                    this@linearLayout.children.forEach { (it as ColorSelectButton)
+                                            .redrawForSelection(viewModel.drawColor.value!!) }
+                                }
+                            }.lparams {
+                                padding = dip(4)
+                                rightMargin = dip(36)
+                            }
+                        }
+                    }.lparams {
+                        width = wrapContent
+                        height = wrapContent
+                        alignParentLeft()
+                    }
+                    depressedColorChangeButton = imageView {
+                        image = getDrawable(R.drawable.square)
+                        backgroundColor = Color.WHITE
+                        padding = dip(4)
+                        onClick {
+                            viewModel.isSelectingColor.value = false
+                        }
+                    }.lparams {
+                        height = dip(30)
+                        width = dip(30)
+                        alignParentRight()
+                        padding = dip(12)
+                        leftMargin = dip(32)
+                        centerVertically()
+                    }
                 }
             }.lparams {
                 width = matchParent
                 height = wrapContent
                 alignParentBottom()
             }
+
             secondaryButtonBar = relativeLayout {
                 id = ID_SECONDARYBUTTONBAR
                 backgroundColor = Color.LTGRAY
@@ -286,7 +332,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                     }
                 }.lparams { rightOf(ID_PGDOWNBUTTON) }*/
             }.lparams {
-                above(ID_BUTTONBAR)
+                above(ID_BUTTONFRAME)
                 width = matchParent
                 height = wrapContent
             }
@@ -332,13 +378,13 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
             }
         })
         viewModel.drawColor.observe(this, Observer {
-            zoomView.paint.color = viewModel.drawColor.value ?: zoomView.paint.color
+            mainView.paint.color = viewModel.drawColor.value ?: mainView.paint.color
             if (viewModel.currentNode.isActive) { // we can only change the color of a node if we're still working on it
                 viewModel.currentNode.color = viewModel.drawColor.value
                 viewModel.currentNode.undoRedoStack.forEach {
-                    it.changeColor(zoomView.paint.color)
+                    it.changeColor(mainView.paint.color)
                 }
-                zoomView.invalidate()
+                mainView.invalidate()
                 invalidateTreeViews()
 
             }
@@ -407,6 +453,15 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 pgUpButton.isEnabled = false
             }
         })
+        viewModel.isSelectingColor.observe(this, Observer {
+            if (it) {
+                primaryButtonBar.visibility = GONE
+                colorSelectionBar.visibility = VISIBLE
+            } else {
+                primaryButtonBar.visibility = VISIBLE
+                colorSelectionBar.visibility = GONE
+            }
+        })
     }
 
     fun onPageChanged() {
@@ -416,7 +471,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                          * loaded this page before or there was an error, or we have loaded the page before, in
                          * which case it's the base PDF.
                          */
-        backView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+        backView.initBackBitmapIfNull(mainView.width, mainView.height)
         viewModel.isSecondaryButtonBarShown.value = true
     }
 
@@ -469,7 +524,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
     override fun changeToNode(node: BmpTree.TreeNode) {
         viewModel.currentNode = node
         viewModel.arrangeBmps()
-        zoomView.invalidate()
+        mainView.invalidate()
         invalidateTreeViews()
 
         if (!node.isActive) viewModel.isEditing.value = false
@@ -479,7 +534,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
     }
 
     override fun addNewNodeAt(node: BmpTree.TreeNode) {
-        viewModel.currentNode = viewModel.tree.addNewNodeAt(node, zoomView.paint.color)
+        viewModel.currentNode = viewModel.tree.addNewNodeAt(node, mainView.paint.color)
         invalidateTreeViews()
         viewModel.enableDisableUndoRedoButtons()
         viewModel.isDeleteButtonEnabled.value = true
@@ -519,8 +574,8 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
     fun saveTreeAndFileAsync() {
         try {
             //doAsync {
-                writeTree()
-                FileDataManager.saveFileData(filesDir)
+            writeTree()
+            FileDataManager.saveFileData(filesDir)
             //}
         } catch (error: Exception) {
             Log.e(TAG, "Caught exception while writing tree or fileUri data", error)
@@ -539,9 +594,9 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 Log.e(TAG, "Caught exception when loading data", error)
                 viewModel.reset()
             }
-            backView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+            backView.initBackBitmapIfNull(mainView.width, mainView.height)
             backView.invalidate()
-            zoomView.invalidate()
+            mainView.invalidate()
             invalidateTreeViews()
         }
     }
@@ -555,9 +610,9 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
             Log.e(TAG, "Caught exception when loading data", error)
             viewModel.reset()
         }
-        backView.initBackBitmapIfNull(zoomView.width, zoomView.height)
+        backView.initBackBitmapIfNull(mainView.width, mainView.height)
         backView.invalidate()
-        zoomView.invalidate()
+        mainView.invalidate()
         invalidateTreeViews()
     }
 

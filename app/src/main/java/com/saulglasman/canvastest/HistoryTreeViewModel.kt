@@ -20,7 +20,8 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
                            var isCommitButtonEnabled: MutableLiveData<Boolean> = MutableLiveData(),
                            var isSecondaryButtonBarShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isPgUpButtonEnabled: MutableLiveData<Boolean> = MutableLiveData(),
-                           var isPgDownButtonEnabled: MutableLiveData<Boolean> = MutableLiveData()) : ViewModel() {
+                           var isPgDownButtonEnabled: MutableLiveData<Boolean> = MutableLiveData(),
+                           var isSelectingColor: MutableLiveData<Boolean> = MutableLiveData()) : ViewModel() {
 
     fun reset() {
         backBitmap = null
@@ -35,6 +36,7 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
         isDeleteButtonEnabled.value = false
         isCommitButtonEnabled.value = false
         isSecondaryButtonBarShown.value = false
+        isSelectingColor.value = false
         drawColor.value = Color.BLACK
     }
 
