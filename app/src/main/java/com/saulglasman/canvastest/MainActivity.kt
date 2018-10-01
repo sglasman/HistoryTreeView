@@ -518,6 +518,16 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
         Log.d(TAG, "Debug")
     }
 
+    override fun onBackPressed() {
+        if (viewModel.buttonBarMode.value != ButtonBarMode.MODE_DEFAULT) {
+            viewModel.buttonBarMode.value = ButtonBarMode.MODE_DEFAULT
+        } else if (viewModel.isEditing.value!!) {
+            viewModel.isEditing.value = false
+        } else {
+            super.onBackPressed()
+        }
+    }
+
     fun invalidateTreeViews() {
         treeView.invalidate()
         miniTreeView.invalidate()
