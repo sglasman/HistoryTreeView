@@ -7,13 +7,11 @@ import android.graphics.Paint
 import android.widget.ImageView
 import org.jetbrains.anko.dip
 
-class ColorSelectButton(context: Context, val buttonColor: Int, var isCurrentColor: Boolean) : ImageView(context) {
+class ColorSelectButton(context: Context, val buttonColor: Int, val viewModel: HistoryTreeViewModel) : ImageView(context) {
     val paint = Paint()
-    val colorSelectButtonSize = 24
-    val selectRectMargin = 3
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(dip(colorSelectButtonSize), dip(colorSelectButtonSize))
+        setMeasuredDimension(dip(COLOR_SELECT_BUTTON_SIZE), dip(COLOR_SELECT_BUTTON_SIZE))
     }
 
     override fun onDraw(canvas: Canvas?) {
@@ -21,22 +19,19 @@ class ColorSelectButton(context: Context, val buttonColor: Int, var isCurrentCol
             color = buttonColor
             style = Paint.Style.FILL
         }
-        canvas?.drawRect(dip(selectRectMargin).toFloat(), dip(selectRectMargin).toFloat(),
-                dip(colorSelectButtonSize - selectRectMargin).toFloat(), dip(colorSelectButtonSize - selectRectMargin).toFloat(), paint)
+        canvas?.drawRect(dip(SELECT_RECT_MARGIN).toFloat(), dip(SELECT_RECT_MARGIN).toFloat(),
+                dip(COLOR_SELECT_BUTTON_SIZE - SELECT_RECT_MARGIN).toFloat(),
+                dip(COLOR_SELECT_BUTTON_SIZE - SELECT_RECT_MARGIN).toFloat(), paint)
         with(paint) {
             this.color = Color.BLACK
             style = Paint.Style.STROKE
-            strokeWidth = 6f
+            strokeWidth = dip(1f).toFloat()
         }
-        canvas?.drawRect(dip(selectRectMargin).toFloat(), dip(selectRectMargin).toFloat(),
-                dip(colorSelectButtonSize - selectRectMargin).toFloat(), dip(colorSelectButtonSize - selectRectMargin).toFloat(), paint)
-        if (isCurrentColor) canvas?.drawRect(0f, 0f,
-                dip(colorSelectButtonSize).toFloat(), dip(colorSelectButtonSize).toFloat(), paint)
+        canvas?.drawRect(dip(SELECT_RECT_MARGIN).toFloat(), dip(SELECT_RECT_MARGIN).toFloat(),
+                dip(COLOR_SELECT_BUTTON_SIZE - SELECT_RECT_MARGIN).toFloat(),
+                dip(COLOR_SELECT_BUTTON_SIZE - SELECT_RECT_MARGIN).toFloat(), paint)
+        if (buttonColor == viewModel.drawColor.value) canvas?.drawRect(0f, 0f,
+                dip(COLOR_SELECT_BUTTON_SIZE).toFloat(), dip(COLOR_SELECT_BUTTON_SIZE).toFloat(), paint)
         super.onDraw(canvas)
-    }
-
-    fun redrawForSelection(drawColor: Int) {
-        isCurrentColor = (buttonColor == drawColor)
-        invalidate()
     }
 }

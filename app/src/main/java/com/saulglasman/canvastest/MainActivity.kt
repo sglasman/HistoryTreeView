@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -34,7 +35,9 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
     lateinit var editButton: ImageView
     lateinit var commitButton: ImageView
     lateinit var colorChangeButton: ImageView
+    lateinit var widthChangeButton: ImageView
     lateinit var depressedColorChangeButton: ImageView
+    lateinit var depressedWidthChangeButton: ImageView
     lateinit var undoButton: ImageView
     lateinit var redoButton: ImageView
     lateinit var moreButton: ImageView
@@ -45,6 +48,9 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
     lateinit var primaryButtonBar: RelativeLayout
     lateinit var secondaryButtonBar: RelativeLayout
     lateinit var colorSelectionBar: RelativeLayout
+    lateinit var widthSelectionBar: RelativeLayout
+    lateinit var colorButtons: LinearLayout
+    lateinit var widthButtons: LinearLayout
     lateinit var treeView: TreeView
     lateinit var miniTreeView: TreeView
     lateinit var backView: BackView
@@ -163,45 +169,27 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                         padding = dip(12)
                         rightMargin = dip(32)
                     }
+                    widthChangeButton = imageView {
+                        id = ID_WIDTHCHANGEBUTTON
+                        image = getDrawable(R.drawable.ic_widths)
+                        padding = dip(4)
+                        onClick {
+                            viewModel.buttonBarMode.value = ButtonBarMode.MODE_WIDTHSELECT
+                        }
+                    }.lparams {
+                        height = dip(30)
+                        width = dip(30)
+                        leftOf(ID_COLORCHANGEBUTTON)
+                        padding = dip(12)
+                        leftMargin = dip(32)
+                        centerVertically()
+                    }
                     colorChangeButton = imageView {
                         id = ID_COLORCHANGEBUTTON
                         image = getDrawable(R.drawable.square)
                         padding = dip(4)
-/*                    onClick {
-                        colorSelectDialog = alert {
-                            customView {
-                                verticalLayout {
-                                    textView("Select color:") {
-                                        id = ID_ALERTSELECTCOLORTEXT
-                                    }.lparams {
-                                        width = matchParent
-                                        height = wrapContent
-                                        padding = dip(12)
-
-                                    }
-                                    linearLayout {
-                                        COLORS.forEach { color ->
-                                            colorSelectButton(color) {
-                                                onClick {
-                                                    viewModel.drawColor.value = color
-                                                    colorSelectDialog.dismiss()
-                                                }
-                                            }.lparams {
-                                                padding = dip(4)
-                                                rightMargin = dip(36)
-                                            }
-                                        }
-                                    }.lparams {
-                                        width = matchParent
-                                        height = wrapContent
-                                        margin = dip(16)
-                                    }
-                                }
-                            }
-                        }.show() // show color change dialog
-                    }*/
                         onClick {
-                            viewModel.isSelectingColor.value = true
+                            viewModel.buttonBarMode.value = ButtonBarMode.MODE_COLORSELECT
                         }
                     }.lparams {
                         height = dip(30)
@@ -218,13 +206,11 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 colorSelectionBar = relativeLayout {
                     visibility = GONE
                     backgroundColor = Color.LTGRAY
-                    linearLayout {
+                    colorButtons = linearLayout {
                         COLORS.forEach { color ->
-                            colorSelectButton(color, color == viewModel.drawColor.value) {
+                            colorSelectButton(color, viewModel) {
                                 onClick {
                                     viewModel.drawColor.value = color
-                                    this@linearLayout.children.forEach { (it as ColorSelectButton)
-                                            .redrawForSelection(viewModel.drawColor.value!!) }
                                 }
                             }.lparams {
                                 padding = dip(4)
@@ -241,7 +227,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                         backgroundColor = Color.WHITE
                         padding = dip(4)
                         onClick {
-                            viewModel.isSelectingColor.value = false
+                            viewModel.buttonBarMode.value = ButtonBarMode.MODE_DEFAULT
                         }
                     }.lparams {
                         height = dip(30)
@@ -251,6 +237,43 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                         leftMargin = dip(32)
                         centerVertically()
                     }
+                }.lparams {
+                    width = matchParent
+                    height = wrapContent
+                }
+                widthSelectionBar = relativeLayout {
+                    visibility = GONE
+                    backgroundColor = Color.LTGRAY
+                    widthButtons = linearLayout {
+                        WIDTHS.forEach { width ->
+                            widthSelectButton(width, viewModel) {
+                                onClick {
+                                    viewModel.drawWidth.value = width
+                                }
+                            }.lparams {
+                                padding = dip(4)
+                                rightMargin = dip(36)
+                            }
+                        }
+                    }
+                    depressedWidthChangeButton = imageView {
+                        image = getDrawable(R.drawable.ic_widths)
+                        backgroundColor = Color.WHITE
+                        padding = dip(4)
+                        onClick {
+                            viewModel.buttonBarMode.value = ButtonBarMode.MODE_DEFAULT
+                        }
+                    }.lparams {
+                        height = dip(30)
+                        width = dip(30)
+                        alignParentRight()
+                        padding = dip(12)
+                        leftMargin = dip(32)
+                        centerVertically()
+                    }
+                }.lparams {
+                    width = matchParent
+                    height = wrapContent
                 }
             }.lparams {
                 width = matchParent
@@ -379,6 +402,7 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
         })
         viewModel.drawColor.observe(this, Observer {
             mainView.paint.color = viewModel.drawColor.value ?: mainView.paint.color
+            colorButtons.children.forEach { it.invalidate() }
             if (viewModel.currentNode.isActive) { // we can only change the color of a node if we're still working on it
                 viewModel.currentNode.color = viewModel.drawColor.value
                 viewModel.currentNode.undoRedoStack.forEach {
@@ -386,8 +410,12 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 }
                 mainView.invalidate()
                 invalidateTreeViews()
-
             }
+        })
+        viewModel.drawWidth.observe(this, Observer {
+            mainView.paint.strokeWidth = dip(viewModel.drawWidth.value!!).toFloat()
+            widthButtons.children.forEach { it.invalidate() }
+            mainView.invalidate()
         })
         viewModel.isUndoEnabled.observe(this, Observer {
             if (it) {
@@ -453,13 +481,19 @@ class MainActivity : FilePickerActivity(), TreeView.TreeViewListener, HistoryTre
                 pgUpButton.isEnabled = false
             }
         })
-        viewModel.isSelectingColor.observe(this, Observer {
-            if (it) {
-                primaryButtonBar.visibility = GONE
-                colorSelectionBar.visibility = VISIBLE
-            } else {
+        viewModel.buttonBarMode.observe(this, Observer {
+            if (it == ButtonBarMode.MODE_DEFAULT) {
                 primaryButtonBar.visibility = VISIBLE
                 colorSelectionBar.visibility = GONE
+                widthSelectionBar.visibility = GONE
+            } else if (it == ButtonBarMode.MODE_COLORSELECT) {
+                primaryButtonBar.visibility = GONE
+                colorSelectionBar.visibility = VISIBLE
+                widthSelectionBar.visibility = GONE
+            } else if (it == ButtonBarMode.MODE_WIDTHSELECT) {
+                primaryButtonBar.visibility = GONE
+                colorSelectionBar.visibility = GONE
+                widthSelectionBar.visibility = VISIBLE
             }
         })
     }

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.view.MotionEvent
+import org.jetbrains.anko.dip
 import java.lang.Math.abs
 
 @SuppressLint("ViewConstructor")
@@ -21,7 +22,7 @@ class HistoryTreeView(context: Context, viewModel: HistoryTreeViewModel, val lis
         with(paint) {
             color = Color.BLACK
             style = Paint.Style.STROKE
-            strokeWidth = STROKE_WIDTH
+            strokeWidth = dip(DEFAULT_STROKE_WIDTH).toFloat()
             strokeCap = Paint.Cap.ROUND
         }
         viewModel.enableDisablePgButtons()

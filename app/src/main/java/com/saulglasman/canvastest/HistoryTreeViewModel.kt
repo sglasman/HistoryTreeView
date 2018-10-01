@@ -14,6 +14,7 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
                            var isTreeShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isEditing: MutableLiveData<Boolean> = MutableLiveData(),
                            var drawColor: MutableLiveData<Int> = MutableLiveData(),
+                           var drawWidth: MutableLiveData<Float> = MutableLiveData(),
                            var isUndoEnabled: MutableLiveData<Boolean> = MutableLiveData(),
                            var isRedoEnabled: MutableLiveData<Boolean> = MutableLiveData(),
                            var isDeleteButtonEnabled: MutableLiveData<Boolean> = MutableLiveData(),
@@ -21,7 +22,7 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
                            var isSecondaryButtonBarShown: MutableLiveData<Boolean> = MutableLiveData(),
                            var isPgUpButtonEnabled: MutableLiveData<Boolean> = MutableLiveData(),
                            var isPgDownButtonEnabled: MutableLiveData<Boolean> = MutableLiveData(),
-                           var isSelectingColor: MutableLiveData<Boolean> = MutableLiveData()) : ViewModel() {
+                           var buttonBarMode: MutableLiveData<ButtonBarMode> = MutableLiveData()) : ViewModel() {
 
     fun reset() {
         backBitmap = null
@@ -29,6 +30,10 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
         tree = BmpTree()
         currentNode = tree.rootNode
 
+        resetLiveData()
+    }
+
+    fun resetLiveData() {
         isEditing.value = false
         isTreeShown.value = false
         isUndoEnabled.value = false
@@ -36,8 +41,9 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
         isDeleteButtonEnabled.value = false
         isCommitButtonEnabled.value = false
         isSecondaryButtonBarShown.value = false
-        isSelectingColor.value = false
+        buttonBarMode.value = ButtonBarMode.MODE_DEFAULT
         drawColor.value = Color.BLACK
+        drawWidth.value = DEFAULT_STROKE_WIDTH
     }
 
     fun arrangeBmps() {
@@ -59,13 +65,6 @@ class HistoryTreeViewModel(var backBitmap: Bitmap? = null,
     }
 
     init {
-        isEditing.value = false
-        isTreeShown.value = false
-        isUndoEnabled.value = false
-        isRedoEnabled.value = false
-        isDeleteButtonEnabled.value = false
-        isCommitButtonEnabled.value = false
-        isSecondaryButtonBarShown.value = false
-        drawColor.value = Color.BLACK
+        resetLiveData()
     }
 }
